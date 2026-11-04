@@ -1,0 +1,1561 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>雷霆小肥鱼 · 设置</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%2314161f'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23f4c968' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23f4c968'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0a0c11; --panel:#14161f; --panel2:#171a25; --line:#242838;
+    --text:#e9edf7; --muted:#8b93a7; --dim:#6f778c;
+    --gold:#f4c968; --fish:#7fb6ff;
+    --ok:#57d38c; --warn:#f0b45a; --bad:#f06a6a;
+    --radius:16px; --radius-sm:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(42% 42% at 12% 0%, rgba(127,182,255,.10), transparent 70%),
+      radial-gradient(38% 38% at 88% 4%, rgba(244,201,104,.08), transparent 70%),
+      radial-gradient(50% 50% at 60% 100%, rgba(120,90,255,.05), transparent 70%);
+    filter:blur(8px)}
+  /* ---------- 顶栏 ---------- */
+  .topbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;
+    gap:18px;padding:13px 24px;border-bottom:1px solid var(--line);
+    background:rgba(12,15,22,.72);backdrop-filter:blur(14px)}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:20px;
+    background:linear-gradient(150deg,#1e2636,#12151e);
+    border:1px solid rgba(244,201,104,.34);
+    box-shadow:0 0 20px rgba(244,201,104,.07), inset 0 1px 0 rgba(255,255,255,.05)}
+  .brand h1{margin:0;font-size:16px;letter-spacing:.6px;font-weight:700}
+  .brand p{margin:3px 0 0;font-size:10px;letter-spacing:2.2px;color:var(--dim)}
+  .pills{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(255,255,255,.025);
+    font-size:11.5px;color:var(--muted);text-decoration:none;white-space:nowrap}
+  .pill b{color:var(--text);font-weight:600}
+  .pill:hover{border-color:rgba(244,201,104,.4);color:var(--gold)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--bad);
+    box-shadow:0 0 9px currentColor;flex-shrink:0}
+  .dot.ok{background:var(--ok);color:var(--ok)}
+  /* ---------- 两栏 ---------- */
+  .shell{position:relative;z-index:1;flex:1;min-height:0;width:100%;max-width:1180px;margin:0 auto;
+    display:grid;grid-template-columns:214px minmax(0,1fr);gap:18px;padding:16px 22px 0}
+  .side{display:flex;flex-direction:column;gap:2px;padding:12px 10px;overflow-y:auto;
+    border:1px solid var(--line);border-radius:var(--radius);
+    background:linear-gradient(180deg,rgba(23,26,37,.88),rgba(16,18,26,.9))}
+  .group{font-size:9.5px;letter-spacing:2px;color:var(--dim);padding:13px 10px 5px;user-select:none}
+  .nav{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:1px solid transparent;
+    border-radius:10px;background:transparent;color:#b9c2d6;font:12.5px inherit;cursor:pointer;
+    text-align:left;transition:background .15s,color .15s,border-color .15s}
+  .nav b{font-size:13px;width:18px;text-align:center;flex-shrink:0;font-weight:400;
+    color:#69718a;transition:color .15s}
+  .nav:hover{background:rgba(255,255,255,.045);color:var(--text)}
+  .nav.active{background:rgba(244,201,104,.10);border-color:rgba(244,201,104,.32);color:var(--gold)}
+  .nav.active b{color:var(--gold)}
+  .side-foot{margin-top:auto;padding:14px 10px 4px;border-top:1px solid var(--line);
+    font:10.5px/1.7 Consolas,"Cascadia Mono",monospace;color:var(--dim);word-break:break-all}
+  .main{min-width:0;overflow-y:auto;padding:2px 4px 22px;scroll-behavior:smooth}
+  .view{display:none;animation:viewIn .18s ease-out}
+  .view.active{display:block}
+  @keyframes viewIn{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:none}}
+  /* ---------- 标题 ---------- */
+  .head{padding:6px 2px 4px}
+  .kicker{display:block;color:var(--gold);font-size:9.5px;letter-spacing:2.6px;margin-bottom:7px}
+  .head h2{margin:0;font-size:24px;letter-spacing:.3px;font-weight:700}
+  .head p{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.7;max-width:660px}
+  /* ---------- 卡片 ---------- */
+  .card{margin-top:14px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    background:linear-gradient(180deg,rgba(23,26,37,.92),rgba(18,20,28,.92));
+    box-shadow:0 10px 30px rgba(0,0,0,.18)}
+  .card > h3{margin:0;padding:15px 18px 12px;font-size:11.5px;letter-spacing:1.6px;
+    color:var(--muted);font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .card > h3 em{font-style:normal;color:var(--gold);letter-spacing:0;font-weight:500;font-size:11px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:13px 18px;
+    border-top:1px solid rgba(36,40,56,.62)}
+  .row:first-of-type{border-top:0}
+  .row .t{font-size:13px;display:block;line-height:1.5}
+  .row > div:first-child{flex:1;min-width:0}
+  .row small{display:block;color:var(--muted);font-size:11px;line-height:1.6;margin-top:3px;max-width:470px}
+  .row.col{flex-direction:column;align-items:stretch;gap:9px}
+  .row.col .t{margin-bottom:-2px}
+  .ctl{flex-shrink:0;display:flex;align-items:center;gap:8px}
+  .ctl.wide{flex:1;width:auto;min-width:0}
+  .ctl.wide > input,.ctl.wide > textarea{flex:1 1 auto;width:auto;min-width:0}
+  /* ---------- 控件 ---------- */
+  input[type=text],input[type=number],input[type=password],select,textarea{
+    background:#0d1018;border:1px solid #2a3042;color:var(--text);border-radius:10px;
+    padding:9px 11px;font:12.5px inherit;outline:none;transition:border-color .15s,box-shadow .15s;
+    min-width:0}
+  input[type=text]:hover,select:hover,textarea:hover{border-color:#343c52}
+  input:focus,select:focus,textarea:focus{border-color:rgba(244,201,104,.62);
+    box-shadow:0 0 0 3px rgba(244,201,104,.10)}
+  input::placeholder,textarea::placeholder{color:#5d6479}
+  textarea{resize:vertical;min-height:64px;line-height:1.6;font-family:Consolas,"Cascadia Mono",monospace;font-size:11.5px}
+  .w-input{width:250px}
+  .w-num{width:96px;text-align:right;font-variant-numeric:tabular-nums}
+  .w-wide{width:100%}
+  code{font-family:Consolas,"Cascadia Mono",monospace;font-size:11.5px;color:#c8d2e6;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+    padding:2px 6px;border-radius:6px;word-break:break-all}
+  /* 开关 */
+  .sw{position:relative;display:inline-flex;width:46px;height:26px;flex-shrink:0;cursor:pointer}
+  .sw input{position:absolute;opacity:0;width:0;height:0}
+  .sw span{position:absolute;inset:0;border-radius:999px;background:#20253433;background:#202534;
+    border:1px solid #2e3446;transition:background .18s,border-color .18s}
+  .sw span::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+    background:#7f879b;transition:transform .18s,background .18s}
+  .sw input:checked + span{background:rgba(244,201,104,.20);border-color:rgba(244,201,104,.55)}
+  .sw input:checked + span::after{transform:translateX(20px);background:var(--gold)}
+  .sw input:focus-visible + span{box-shadow:0 0 0 3px rgba(244,201,104,.18)}
+  /* 分段（音色） */
+  .seg{display:inline-flex;padding:3px;gap:3px;background:#0d1018;border:1px solid #2a3042;border-radius:11px}
+  .seg label{position:relative;cursor:pointer;margin:0}
+  .seg input{position:absolute;opacity:0;width:0;height:0}
+  .seg span{display:block;padding:7px 14px;border-radius:8px;font-size:12.5px;color:var(--muted);
+    transition:background .15s,color .15s,box-shadow .15s;white-space:nowrap}
+  .seg span:hover{color:var(--text)}
+  .seg input:checked + span{background:rgba(244,201,104,.14);color:var(--gold);
+    box-shadow:inset 0 0 0 1px rgba(244,201,104,.35)}
+  .seg input:focus-visible + span{box-shadow:0 0 0 2px rgba(244,201,104,.25)}
+  /* 滑杆 */
+  input[type=range]{-webkit-appearance:none;appearance:none;width:190px;height:4px;border-radius:99px;
+    background:#272c3d;outline:none;padding:0;border:0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+    background:var(--gold);cursor:pointer;box-shadow:0 0 0 4px rgba(244,201,104,.12)}
+  .num-out{min-width:38px;text-align:right;font:12px Consolas,monospace;color:var(--gold)}
+  /* 按钮 */
+  .btn{border-radius:10px;padding:9px 16px;font:12.5px inherit;cursor:pointer;
+    border:1px solid #2c3245;background:#181c28;color:#cfd6e8;
+    transition:border-color .15s,color .15s,background .15s,transform .06s}
+  .btn:hover{border-color:rgba(244,201,104,.45);color:var(--gold)}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.ghost{background:transparent}
+  .btn.primary{background:linear-gradient(180deg,#f8d98a,#e9b84e);color:#231a06;
+    border-color:#f4c968;font-weight:700}
+  .btn.primary:hover{color:#1c1403;filter:brightness(1.04)}
+  .btn.primary:disabled{background:#1d1c17;color:#7f775f;border-color:#3a3423;
+    filter:none;opacity:1}
+  .btn.sm{padding:6px 11px;font-size:11.5px;border-radius:8px}
+  .btn.danger:hover{border-color:rgba(240,106,106,.5);color:#ffb9b9}
+  #trainToggle.danger{background:linear-gradient(180deg,#b84141,#8f2727);border-color:#d86565;color:#fff}
+  #trainToggle.danger:hover{color:#fff;filter:brightness(1.06)}
+  /* 徽标 / 提示 */
+  .badge{font-size:10.5px;padding:3px 8px;border-radius:999px;border:1px solid #2c3245;
+    color:var(--muted);background:rgba(255,255,255,.02);white-space:nowrap}
+  .badge.on{color:var(--gold);border-color:rgba(244,201,104,.4);background:rgba(244,201,104,.08)}
+  .badge.warn{color:var(--warn);border-color:rgba(240,180,90,.35);background:rgba(240,180,90,.07)}
+  .note{display:none;gap:9px;align-items:flex-start;margin:0 18px 14px;padding:10px 12px;border-radius:10px;
+    background:rgba(240,180,90,.07);border:1px solid rgba(240,180,90,.22);
+    color:#e6c690;font-size:11.5px;line-height:1.65}
+  .note.show{display:flex}
+  .note b{color:#f2d59a;font-weight:600}
+  .actions{display:flex;flex-wrap:wrap;gap:9px;padding:15px 18px}
+  .hint-line{padding:0 18px 15px;color:var(--dim);font-size:11px;line-height:1.6}
+  /* ---------- 关于 ---------- */
+  .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;padding:6px 18px 14px}
+  .kv div{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 0;border-bottom:1px dashed rgba(36,40,56,.7);font-size:12px}
+  .kv span{color:var(--muted)}
+  .kv b{color:#dbe2f2;font-weight:500;text-align:right;word-break:break-all}
+  /* ---------- 底栏 ---------- */
+  .dock{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:12px 24px;border-top:1px solid var(--line);
+    background:rgba(12,15,22,.85);backdrop-filter:blur(14px)}
+  .dock-note{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted);min-width:0}
+  .dock-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  /* ---------- 重启遮罩 / toast ---------- */
+  .sheet{position:fixed;inset:0;z-index:50;display:none;place-items:center;
+    background:rgba(5,7,11,.74);backdrop-filter:blur(7px)}
+  .sheet.show{display:grid}
+  .sheet .box{width:min(430px,86vw);padding:30px 28px;border-radius:18px;
+    border:1px solid var(--line);background:linear-gradient(180deg,#171b26,#11141c);
+    text-align:center;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+  .sheet .box h3{margin:0 0 8px;font-size:16px}
+  .sheet .box p{margin:0;color:var(--muted);font-size:12px;line-height:1.7}
+  .spinner{width:34px;height:34px;margin:0 auto 18px;border-radius:50%;
+    border:3px solid rgba(244,201,104,.18);border-top-color:var(--gold);
+    animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .toast{position:fixed;left:50%;bottom:86px;transform:translate(-50%,10px);z-index:60;
+    padding:10px 16px;border-radius:10px;background:#1a1f2c;
+    border:1px solid rgba(244,201,104,.3);color:#f3e9cf;font-size:12.5px;
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:80vw}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.bad{border-color:rgba(240,106,106,.45);color:#ffd5d5}
+  /* ---------- 滚动条 ---------- */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#232838;border-radius:99px;
+    border:3px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:#31384c;background-clip:padding-box;border:3px solid transparent}
+  /* ---------- 性格 / 表情包 ---------- */
+  .layers{display:flex;flex-direction:column;gap:9px}
+  .layer{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:var(--radius-sm);
+    border:1px solid var(--line);background:rgba(255,255,255,.02)}
+  .layer .tag{flex-shrink:0;min-width:74px;padding:4px 9px;border-radius:999px;font-size:11px;
+    text-align:center;color:var(--gold);border:1px solid rgba(244,201,104,.32);
+    background:rgba(244,201,104,.06)}
+  .layer .tag.off{color:var(--dim);border-color:var(--line);background:transparent}
+  .layer .body{min-width:0;flex:1}
+  .layer .body b{display:block;font-size:13px;margin-bottom:3px}
+  .layer .body small{display:block;color:var(--muted);font-size:11.5px;line-height:1.55}
+  .layer .meta{flex-shrink:0;color:var(--dim);font-size:10.5px;text-align:right}
+  .preview{margin:12px 0 0;padding:14px;border-radius:var(--radius-sm);border:1px solid var(--line);
+    background:#0d1017;color:#c7cfdd;font-size:11.5px;line-height:1.65;white-space:pre-wrap;
+    word-break:break-word;max-height:320px;overflow:auto}
+  .stickers{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px;margin-top:12px}
+  .sticker{padding:8px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.02);
+    text-align:center}
+  .sticker img{width:100%;aspect-ratio:1/1;object-fit:contain;display:block;border-radius:8px;
+    background:radial-gradient(circle at 50% 35%, rgba(127,182,255,.10), transparent 70%)}
+  .sticker span{display:block;margin-top:6px;font-size:11px;color:var(--muted)}
+  /* ---------- 窄屏 ---------- */
+  @media (max-width:880px){
+    .shell{grid-template-columns:1fr;padding:12px 14px 0;gap:12px}
+    .side{flex-direction:row;overflow-x:auto;padding:7px;gap:4px}
+    .group,.side-foot{display:none}
+    .nav{white-space:nowrap;width:auto}
+    .row{flex-direction:column;align-items:stretch;gap:10px}
+    .ctl{justify-content:flex-start;flex-wrap:wrap}
+    .w-input{width:100%}
+    .kv{grid-template-columns:1fr}
+    .dock{padding:10px 14px}
+    .brand p{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">🐟</div>
+    <div>
+      <h1>设置</h1>
+      <p>DAFEIYU · PET SETTINGS</p>
+    </div>
+  </div>
+  <div class="pills">
+    <span class="pill"><i class="dot" id="dot"></i><span id="srvText">连接中…</span></span>
+    <span class="pill">v<b id="ver">—</b></span>
+    <a class="pill" href="/studio" target="_blank" rel="noreferrer">控制台 ↗</a>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="side" aria-label="设置分类">
+    <div class="group">外观与交互</div>
+    <button class="nav active" data-view="pet"><b>◉</b>桌宠</button>
+    <div class="group">声音与模型</div>
+    <button class="nav" data-view="voice"><b>♪</b>语音</button>
+    <button class="nav" data-view="persona"><b>❖</b>性格</button>
+    <button class="nav" data-view="model"><b>◈</b>模型</button>
+    <div class="group">接入</div>
+    <button class="nav" data-view="service"><b>⇄</b>服务</button>
+    <button class="nav" data-view="live"><b>▷</b>直播</button>
+    <button class="nav" data-view="kook"><b>🎧</b>KOOK</button>
+    <div class="group">其他</div>
+    <button class="nav" data-view="action"><b>▶</b>运行</button>
+    <button class="nav" data-view="about"><b>ⓘ</b>关于</button>
+    <div class="side-foot" id="cfgPath">config.json</div>
+  </nav>
+
+  <main class="main" id="main">
+    <!-- ============================ 桌宠 ============================ -->
+    <section class="view active" id="view-pet">
+      <div class="head">
+        <span class="kicker">PET</span>
+        <h2>桌宠</h2>
+        <p>窗口行为和当前游戏。这些值存进同一份 <code>config.json</code>，改完 1~2 秒内落到窗口上，不用重启。</p>
+      </div>
+
+      <section class="card">
+        <h3>窗口</h3>
+        <div class="row">
+          <div><span class="t">总在最前</span><small>打游戏时也压在游戏画面上面。</small></div>
+          <label class="sw"><input type="checkbox" data-k="pet_topmost"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">点击穿透</span><small>鼠标直接穿过去，只有右下角的 ☰ 和缩放手把能点（Ctrl+Alt+D 也能切）。</small></div>
+          <label class="sw"><input type="checkbox" data-k="pet_click_through"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">录屏里隐藏</span><small>让 OBS / 录屏软件拍不到这个窗口（Win10 2004+）。</small></div>
+          <label class="sw"><input type="checkbox" data-k="pet_exclude_capture"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">推送到弹幕窗</span><small>台词同时推到 OBS 的浏览器源和桌宠气泡。</small></div>
+          <label class="sw"><input type="checkbox" data-k="push_overlay"><span></span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>启动与常驻</h3>
+        <div class="row">
+          <div><span class="t">Windows 托盘图标</span><small>在系统托盘常驻一个雷霆小肥鱼图标：左键唤起 / 收起桌宠，右键打开设置。</small></div>
+          <label class="sw"><input type="checkbox" data-k="pet_status_bar"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">开机自启动</span><small>写当前用户注册表 <code>HKCU\\...\\Run</code>，不开 UAC，只拉起桌宠。</small></div>
+          <label class="sw"><input type="checkbox" data-k="pet_autostart"><span></span></label>
+        </div>
+        <div class="hint-line" id="autostartNote">—</div>
+      </section>
+
+      <section class="card">
+        <h3>直播叠加层 <em>直播姬用显示器捕获即可</em></h3>
+        <div class="row">
+          <div><span class="t">叠加层模板</span><small>不用 OBS 浏览器源，直接给直播姬画面加透明状态条。</small></div>
+          <div class="ctl"><select class="w-input" data-k="overlay_template" id="overlaySelect"></select></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>游戏</h3>
+        <div class="row">
+          <div><span class="t">当前游戏</span><small>切换只写 <code>config.game</code>，下一局 / 下一次 Agent 回合才生效。</small></div>
+          <div class="ctl"><select class="w-input" data-k="game" id="gameSelect"></select></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================ 语音 ============================ -->
+    <section class="view" id="view-voice">
+      <div class="head">
+        <span class="kicker">VOICE</span>
+        <h2>语音</h2>
+        <p>曼波（MamboTTS）负责直播姬那条声线，动物语是内置合成，不依赖引擎。</p>
+      </div>
+
+      <section class="card">
+        <h3>发声方式</h3>
+        <div class="row">
+          <div><span class="t">音色</span><small>曼波需要本机引擎在线；离线时会自动退回文字，不会卡住回复。</small></div>
+          <div class="ctl seg">
+            <label><input type="radio" name="voice" value="mambo" data-k="voice"><span>曼波语</span></label>
+            <label><input type="radio" name="voice" value="animal" data-k="voice"><span>动物语</span></label>
+            <label><input type="radio" name="voice" value="off" data-k="voice"><span>静音</span></label>
+          </div>
+        </div>
+        <div class="hint-line">「静音」就是总开关，和 Ctrl+Alt+S 同步；静音时音色保留，选回音色即恢复。</div>
+        <div class="row">
+          <div><span class="t">音量</span><small>0 – 1.5；只影响本机播放，不进录像。</small></div>
+          <div class="ctl">
+            <input type="range" min="0" max="1.5" step="0.01" data-k="volume" id="volume">
+            <span class="num-out" id="volOut">0.55</span>
+          </div>
+        </div>
+        <div class="row">
+          <div><span class="t">语速</span><small>0.5 – 2.0；曼波引擎的 speed 参数。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="0.5" max="2" step="0.05" data-k="tts_speed"><span class="badge">×</span></div>
+        </div>
+        <div class="row">
+          <div><span class="t">合成超时</span><small>等引擎最多多少秒，超时就退回文字。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="5" max="180" step="5" data-k="tts_timeout"><span class="badge">秒</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>曼波引擎 <em id="ttsState">—</em></h3>
+        <div class="row">
+          <div><span class="t">本地引擎</span><small>引擎目录默认自动探测，也可以在控制台配置；端口在「服务」里改。</small></div>
+          <div class="ctl">
+            <button class="btn sm ghost" data-act="start-mambo">启动引擎</button>
+            <button class="btn sm ghost danger" data-act="stop-mambo">关闭引擎</button>
+            <button class="btn sm" data-act="audition">试听</button>
+          </div>
+        </div>
+        <div class="hint-line">试听会在本机播放一句「大家好，我是雷霆小肥鱼」；引擎没起时会先尝试拉起，稍后再点一次。</div>
+      </section>
+    </section>
+
+    <!-- ============================ 性格 ============================ -->
+    <section class="view" id="view-persona">
+      <div class="head">
+        <span class="kicker">PERSONA</span>
+        <h2>性格</h2>
+        <p>个人性格常驻，直播时叠加直播层，玩某个游戏时再叠加该游戏层；三层按顺序拼进系统提示词。</p>
+      </div>
+
+      <section class="card">
+        <h3>叠加顺序</h3>
+        <div class="layers" id="personaLayers"></div>
+        <div class="row" style="margin-top:10px">
+          <div><span class="t">直播时加载直播性格</span><small>关掉就只用个人层（例如安静直播 / 调试时）。</small></div>
+          <label class="sw"><input type="checkbox" data-k="persona_live"><span></span></label>
+        </div>
+        <div class="hint-line">个人 → 直播 → 游戏；KOOK 聊天只加载个人层，不会套用直播/游戏语气。</div>
+      </section>
+
+      <section class="card">
+        <h3>拼出来的提示词 <em id="personaChars">—</em></h3>
+        <pre class="preview" id="personaPreview">—</pre>
+        <div class="actions" style="margin-top:10px">
+          <button class="btn ghost" data-act="studio">打开控制台编辑</button>
+        </div>
+        <div class="hint-line">上面是直播/桌宠栈：个人 + 直播（开着时）+ 当前游戏。KOOK 聊天固定用 <code id="personaChat">companion</code> 个人层，不叠直播/游戏层。</div>
+        <div class="hint-line">编辑入口：控制台「人设」页；文件在 <code>persona/&lt;id&gt;/style.md</code>、<code>persona/live/</code>、<code>games/&lt;id&gt;/persona/layer.md</code>。</div>
+      </section>
+    </section>
+
+    <!-- ============================ 模型 ============================ -->
+    <section class="view" id="view-model">
+      <div class="head">
+        <span class="kicker">MODEL</span>
+        <h2>模型</h2>
+        <p>对话、自动玩和看图都用这里的配置。API Key 只写本机 <code>config.json</code>，接口永远不会回显。</p>
+      </div>
+
+      <section class="card">
+        <h3>接口</h3>
+        <div class="row">
+          <div><span class="t">提供商</span><small>只是标签，真正生效的是下面的地址和模型名。</small></div>
+          <div class="ctl"><input class="w-input" type="text" data-k="llm_provider" placeholder="deepseek"></div>
+        </div>
+        <div class="row">
+          <div><span class="t">接口地址</span><small>OpenAI 兼容的 Base URL。</small></div>
+          <div class="ctl wide"><input class="w-wide" type="text" data-k="llm_base_url" placeholder="https://api.deepseek.com/v1"></div>
+        </div>
+        <div class="row">
+          <div><span class="t">API Key</span><small id="keyHint">只存本机，不回显；留空表示保持原值。</small></div>
+          <div class="ctl">
+            <span class="badge" id="keyState">未配置</span>
+            <input class="w-input" type="password" data-k="llm_api_key" autocomplete="new-password" spellcheck="false" placeholder="粘贴新的 Key">
+            <button class="btn sm ghost danger" data-clear="llm_api_key">清除</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>模型选择</h3>
+        <div class="row">
+          <div><span class="t">对话模型</span><small>桌宠/直播台词。支持图片的模型才能看图。</small></div>
+          <div class="ctl"><input class="w-input" type="text" list="modelList" data-k="llm_model"></div>
+        </div>
+        <div class="row">
+          <div><span class="t">自动玩模型</span><small>战斗/地图决策用的模型。</small></div>
+          <div class="ctl"><input class="w-input" type="text" list="modelList" data-k="autoplay_llm_model"></div>
+        </div>
+        <div class="row">
+          <div><span class="t">看图模型</span><small>收到图片消息时用这个；DeepSeek 只有 flash 系吃图片。</small></div>
+          <div class="ctl"><input class="w-input" type="text" list="modelList" data-k="llm_vision_model"></div>
+        </div>
+        <datalist id="modelList"></datalist>
+      </section>
+
+      <section class="card">
+        <h3>自动玩</h3>
+        <div class="row">
+          <div><span class="t">玩法</span><small>本地算账 = 启发式；LLM 规划 = 玩家决策都交给模型。</small></div>
+          <div class="ctl">
+            <select class="w-input" data-k="autoplay_mode">
+              <option value="local">本地算账</option>
+              <option value="llm">LLM 规划</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div><span class="t">播报节奏</span><small>慢速会等语音播完再走下一步。</small></div>
+          <div class="ctl">
+            <select class="w-input" data-k="autoplay_pace">
+              <option value="voice">慢速播报（等语音）</option>
+              <option value="normal">普通节奏</option>
+            </select>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================ 服务 ============================ -->
+    <section class="view" id="view-service">
+      <div class="head">
+        <span class="kicker">SERVICE</span>
+        <h2>服务与端口</h2>
+        <p>本机只有回环地址能访问。端口在进程启动时绑定，改完要点「重启桌宠」才会生效。</p>
+      </div>
+
+      <section class="card">
+        <h3>本机服务</h3>
+        <div class="row">
+          <div><span class="t">控制台 / 叠加层端口</span><small>设置页、<code>/studio</code>、OBS 浏览器源都走这个端口。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="1" max="65535" data-k="port"><span class="badge">127.0.0.1</span></div>
+        </div>
+        <div class="row">
+          <div><span class="t">曼波配音端口</span><small>曼波引擎监听的端口；引擎端也要监听同一个端口。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="1" max="65535" data-k="tts_port"><span class="badge">TTS</span></div>
+        </div>
+        <div class="row">
+          <div><span class="t">游戏桥接</span><small id="gameApiNote">端口由游戏包的 game.json 声明。</small></div>
+          <div class="ctl"><code id="gameApi">—</code></div>
+        </div>
+        <div class="note" id="envNote"><b>环境变量优先</b><span id="envText"></span></div>
+        <div class="hint-line">游戏桥接是游戏侧 BepInEx 插件开的端口，不归桌宠管；要改就改 <code>games/&lt;id&gt;/game.json</code> 的 <code>capabilities.api</code>。</div>
+      </section>
+
+      <section class="card">
+        <h3>文件</h3>
+        <div class="row">
+          <div><span class="t">配置文件</span><small>所有设置都在这里；已被 .gitignore 忽略。</small></div>
+          <div class="ctl"><code id="aboutConfig">config.json</code></div>
+        </div>
+        <div class="row">
+          <div><span class="t">日志目录</span><small>事件、截图、记忆库、重启日志都在这里。</small></div>
+          <div class="ctl"><code id="aboutLogs">logs</code></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================ 直播 ============================ -->
+    <section class="view" id="view-live">
+      <div class="head">
+        <span class="kicker">LIVE</span>
+        <h2>直播</h2>
+        <p>B 站礼物 / 弹幕监听由桌宠进程负责；同一房间只开一个监听，控制台读同一份事件文件。</p>
+      </div>
+
+      <section class="card">
+        <h3>B 站直播间</h3>
+        <div class="row">
+          <div><span class="t">开启监听</span><small>填房间号后，进入 / 点赞 / 弹幕 / 礼物会推到桌宠侧边气泡。</small></div>
+          <label class="sw"><input type="checkbox" data-k="bilibili_enabled"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">房间号</span><small>直播间 URL 里的那串数字。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="0" step="1" data-k="bilibili_room_id" placeholder="21280913"></div>
+        </div>
+        <div class="row col">
+          <div><span class="t">登录 Cookie <span class="badge" id="cookieState">未配置</span></span>
+            <small>可选：要发弹幕 / 视频评论时需要。只写本机；留空保持，点「清除」删掉。</small></div>
+          <div class="ctl wide">
+            <textarea class="w-wide" rows="3" data-k="bilibili_cookie" spellcheck="false"
+                      placeholder="SESSDATA=…; bili_jct=…"></textarea>
+            <button class="btn sm ghost danger" data-clear="bilibili_cookie">清除</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>录像</h3>
+        <div class="row">
+          <div><span class="t">自动录像总开关</span><small>关掉后所有游戏都不再自动开 OBS 录像（每局策略在控制台里调）。</small></div>
+          <label class="sw"><input type="checkbox" data-k="recording_enabled"><span></span></label>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================ KOOK ============================ -->
+    <section class="view" id="view-kook">
+      <div class="head">
+        <span class="kicker">KOOK</span>
+        <h2>KOOK 聊天</h2>
+        <p>Bot WebSocket 长连接，频道和私聊都行；不需要公网 IP。配置步骤见 <code>docs/KOOK.md</code>。</p>
+      </div>
+
+      <section class="card">
+        <h3>机器人</h3>
+        <div class="row">
+          <div><span class="t">启用 KOOK 聊天</span><small>开启后桌宠会自动拉起 / 收起 KOOK 监控（无窗口子进程）；也可手动 <code>python main.py kook</code>。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_enabled"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">Bot Token</span><small>开发者中心 → 机器人 → WebSocket 连接模式；只写本机，不回显。</small></div>
+          <div class="ctl">
+            <span class="badge" id="kookTokenState">未配置</span>
+            <input class="w-input" type="password" data-k="kook_bot_token" autocomplete="new-password" spellcheck="false" placeholder="留空保持">
+            <button class="btn sm ghost danger" data-clear="kook_bot_token">清除</button>
+          </div>
+        </div>
+        <div class="row">
+          <div><span class="t">聊天人设</span><small>只加载个人层，默认 companion。</small></div>
+          <div class="ctl"><input class="w-input" type="text" data-k="kook_persona" spellcheck="false" placeholder="companion"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>聊天偏好</h3>
+        <div class="row">
+          <div><span class="t">长期记忆</span><small>本地 SQLite 记最近对话和抽取的事实；不联网。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_memory"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">自动学习分享的视频</span><small>聊天里发 B 站视频链接（含 b23.tv），先读标题/简介/热评写进长期记忆，再就这个视频聊天；关闭后只当普通链接。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_share_video"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">桌宠复述</span><small>每条回复同时让桌宠说一遍（需要桌宠在跑）。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_pet_say"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">允许语音回复</span><small>模型按语境决定；KOOK 里以音频卡片发送，点开就能听。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_allow_voice"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">主动发表情包</span><small>模型判断合适时配一张雷霆小肥鱼表情；不会每条都发。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_stickers"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">主动发消息</span><small>安静一阵后主动找最近聊过的频道/私聊说一句；由模型决定这次发不发，每天最多 6 条，不会连发。保存后最多 1 分钟生效。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_proactive"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">最短安静时间</span><small>至少安静这么久才会考虑主动开口（默认 20 分钟）；到点后由模型判断要不要说。保存后最多 1 分钟生效。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="10" max="720" step="1" data-k="kook_proactive_minutes"><span class="badge">分钟</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>陪伴状态 <em id="companionState">—</em></h3>
+        <div class="row">
+          <div><span class="t">情感与生活状态</span><small>她会记着心情、精力、和你熟到什么程度，也会记住你说过「明天面试」这类还没结果的事；这些只影响语气，不会每句汇报。数据只写本机 <code>logs/kook/companion.json</code>。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_companion"><span></span></label>
+        </div>
+        <div class="row">
+          <div><span class="t">免打扰时段</span><small>这段时间不主动开口（跨零点也认，留空 = 不限制）。道别之后当晚也不再打扰。</small></div>
+          <div class="ctl"><input class="w-input" type="text" data-k="kook_quiet_hours" spellcheck="false" placeholder="00:30-07:30"></div>
+        </div>
+        <div class="row">
+          <div><span class="t">连发合并</span><small>对方一句话拆成几条发时，先等你打完再一起回，避免抢答或重复回复；0 = 不合并。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="0" max="10" step="1" data-k="kook_merge_seconds"><span class="badge">秒</span></div>
+        </div>
+        <div class="row">
+          <div><span class="t">分条打字停顿</span><small>一次回几条时，第 2 条之后停一下再发，像真人在打字；只影响第 2 条及以后。</small></div>
+          <label class="sw"><input type="checkbox" data-k="kook_typing_pace"><span></span></label>
+        </div>
+        <div class="hint-line" id="companionNote">—</div>
+      </section>
+
+      <section class="card">
+        <h3>聊天记忆 <em id="memoryState">—</em></h3>
+        <div class="row">
+          <div><span class="t">最近原文条数</span><small>每次请求带上的最近对话条数；越少越省 token，越多越连贯。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="4" max="40" step="2" data-k="kook_context_turns"><span class="badge">条</span></div>
+        </div>
+        <div class="row">
+          <div><span class="t">压缩阈值</span><small>未压缩对话超过这个条数，就把最老的一段交给模型压成摘要（原文仍留本机）。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="8" max="80" step="4" data-k="kook_summary_trigger"><span class="badge">条</span></div>
+        </div>
+        <div class="hint-line" id="memoryNote">—</div>
+      </section>
+    </section>
+
+    <!-- ============================ 运行 ============================ -->
+    <section class="view" id="view-action">
+      <div class="head">
+        <span class="kicker">ACTION</span>
+        <h2>运行</h2>
+        <p>以前右键菜单里的操作集中在这里。需要更细的状态和日志，去控制台。</p>
+      </div>
+
+      <section class="card">
+        <h3>让她玩</h3>
+        <div class="actions">
+          <button class="btn" data-act="play-local">本地算账</button>
+          <button class="btn" data-act="play-llm">LLM 规划</button>
+          <button class="btn ghost" data-act="play-stop">让她停手</button>
+          <button class="btn ghost" data-act="launch">只启动游戏</button>
+        </div>
+        <div class="hint-line">LLM 规划需要先配好 API Key；运行中切换会先停手再按新模式重开。</div>
+      </section>
+
+      <section class="card">
+        <h3>B站摸鱼训练</h3>
+        <div class="actions">
+          <label class="sw" title="摸鱼训练和 KOOK 分享视频共用：刷到/分享时点赞"><input type="checkbox" data-k="bili_training_like"><span></span></label>
+          <span class="badge">是否点赞</span>
+          <label class="sw" title="摸鱼训练和 KOOK 分享视频共用：看完/分享后留一段话"><input type="checkbox" data-k="bili_training_comment"><span></span></label>
+          <span class="badge">是否评论</span>
+          <button class="btn" id="trainToggle" data-act="train-toggle">启动训练</button>
+          <button class="btn" id="trainFav" data-act="train-favorites">快速扫收藏夹</button>
+          <button class="btn ghost" data-act="train-keywords">打开搜索关键词</button>
+        </div>
+        <div class="row">
+          <div><span class="t">收藏夹 ID</span><small>收藏夹链接 <code>favlist?fid=</code> 后面的数字；私有收藏夹需要 B 站登录 Cookie。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="0" step="1" data-k="bili_favorites_id" placeholder="308848993"></div>
+        </div>
+        <div class="row">
+          <div><span class="t">单次扫描条数</span><small>快速扫描不等待视频时长，也不点赞/评论；0 = 整个收藏夹。扫过的视频会跳过，再点一次从断点继续。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="0" max="5000" step="10" data-k="bili_favorites_batch"><span class="badge">条</span></div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost" id="trainCompress" data-act="train-compress">压缩记忆</button>
+          <button class="btn ghost" data-act="train-compress-clear">清除压缩</button>
+        </div>
+        <div class="hint-line" id="trainDigest">—</div>
+        <div class="row">
+          <div><span class="t">训练人格</span><small>只决定“用什么口吻写记忆”；记忆本身是全局的，KOOK/直播共用。</small></div>
+          <div class="ctl"><select class="w-input" id="trainPersona" data-k="bili_training_persona"></select></div>
+        </div>
+        <div class="row">
+          <div><span class="t">记忆生效范围</span><small>两边可以分开开关；默认都开，保存后下一条消息/下一段直播生效。</small></div>
+          <div class="ctl">
+            <label class="sw" title="KOOK 聊天注入训练记忆"><input type="checkbox" data-k="bili_training_apply_kook"><span></span></label>
+            <span class="badge">KOOK</span>
+            <label class="sw" title="直播/游戏注入训练记忆"><input type="checkbox" data-k="bili_training_apply_live"><span></span></label>
+            <span class="badge">直播</span>
+          </div>
+        </div>
+        <div class="row">
+          <div><span class="t">单个视频最大时长</span><small>超过这个时长的视频不刷；默认 30 分钟。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="2" max="180" step="1" data-k="bili_training_max_minutes"><span class="badge">分钟</span></div>
+        </div>
+        <div class="row">
+          <div><span class="t">最低播放量</span><small>低于这个播放量不刷；0 = 不限。</small></div>
+          <div class="ctl"><input class="w-num" type="number" min="0" max="1000000000" step="10000" data-k="bili_training_min_views"><span class="badge">播放</span></div>
+        </div>
+        <div class="row" id="trainKeywordsRow" hidden>
+          <div><span class="t">搜索关键词</span><small>一行一个，逗号也认；空 = 只刷热门。最多 12 个。</small></div>
+          <div class="ctl"><textarea class="w-input" rows="3" data-k="bili_training_keywords" placeholder="例如：人工智能, 游戏史, 做饭"></textarea></div>
+        </div>
+        <div class="hint-line" id="trainStatus">训练会按视频时长等间隔“云看”，不打开视频；状态气泡会变成「摸鱼ing」。</div>
+        <div class="hint-line">训练记忆在控制台「人设」页可查看、编辑、停用；点赞/评论需要 B 站登录 Cookie。
+          这里的点赞/评论开关和评论字数也用于 KOOK 里分享的视频。
+          <a href="/studio#persona" target="_blank" rel="noopener">打开训练记忆</a></div>
+      </section>
+
+      <section class="card">
+        <h3>直播模式</h3>
+        <div class="actions">
+          <button class="btn" data-act="director">开启 LLM 直播模式</button>
+          <button class="btn ghost" data-act="play-stop">停止直播模式</button>
+          <button class="btn ghost" data-act="studio">打开管理端</button>
+        </div>
+        <div class="hint-line">导演会在各游戏包里挑下一段播什么；停止会连带停掉当前模块。</div>
+      </section>
+    </section>
+
+    <!-- ============================ 关于 ============================ -->
+    <section class="view" id="view-about">
+      <div class="head">
+        <span class="kicker">ABOUT</span>
+        <h2>关于</h2>
+        <p>设置和后台是同一份状态：这里看到的就是桌宠此刻读到的。</p>
+      </div>
+
+      <section class="card">
+        <h3>版本与运行</h3>
+        <div class="kv">
+          <div><span>版本</span><b id="aboutVer">—</b></div>
+          <div><span>代号</span><b id="aboutCodename">—</b></div>
+          <div><span>服务进程</span><b id="aboutPid">—</b></div>
+          <div><span>已运行</span><b id="aboutUptime">—</b></div>
+          <div><span>端口</span><b id="aboutPort">—</b></div>
+          <div><span>配置</span><b id="aboutConfig2">config.json</b></div>
+        </div>
+        <div class="actions">
+          <button class="btn" data-act="studio">打开管理端</button>
+          <button class="btn ghost" data-act="restart">重启桌宠</button>
+          <button class="btn ghost danger" data-act="quit">退出桌宠</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>快捷键</h3>
+        <div class="kv">
+          <div><span>点击穿透</span><b>Ctrl + Alt + D</b></div>
+          <div><span>声音开关</span><b>Ctrl + Alt + S</b></div>
+          <div><span>隐藏 / 显示</span><b>Ctrl + Alt + H</b></div>
+          <div><span>退出</span><b>Ctrl + Alt + Q</b></div>
+        </div>
+        <div class="hint-line">左键拖动换朝向，滚轮 / 右下角缩放；右键鱼身紧贴右侧弹出设置齿轮。</div>
+      </section>
+    </section>
+  </main>
+</div>
+
+<footer class="dock">
+  <div class="dock-note">
+    <i class="dot" id="dockDot"></i>
+    <span id="dockText">正在读取配置…</span>
+    <span class="badge warn" id="restartHint" hidden>端口改动待重启</span>
+  </div>
+  <div class="dock-actions">
+    <button class="btn ghost" id="btnRestart">↻ 重启桌宠</button>
+    <button class="btn primary" id="btnSave" disabled>保存修改</button>
+  </div>
+</footer>
+
+<div class="sheet" id="sheet">
+  <div class="box">
+    <div class="spinner" id="sheetSpin"></div>
+    <h3 id="sheetTitle">正在重启桌宠…</h3>
+    <p id="sheetText">窗口会自己回来，稍等一下</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+
+  const state = {
+    cfg: null,          // 后台此刻的配置（唯一状态源）
+    data: null,         // 完整 /api/settings 响应
+    clear: new Set(),   // 待清除的密钥字段
+    busy: false,
+    patch: {},
+  };
+
+  const SECRETS = {
+    llm_api_key: "clear_api_key",
+    bilibili_cookie: "clear_bilibili_cookie",
+    kook_bot_token: "clear_kook_token",
+  };
+  const CLEAR_LABEL = {
+    llm_api_key: "API Key",
+    bilibili_cookie: "Cookie",
+    kook_bot_token: "Bot Token",
+  };
+
+  // ------------------------------------------------------------------ 网络
+  async function api(path, body) {
+    const opt = body === undefined
+      ? { cache: "no-store" }
+      : {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          cache: "no-store",
+        };
+    const resp = await fetch(path, opt);
+    let data = {};
+    try { data = await resp.json(); } catch (_) { /* 空响应 */ }
+    if (!resp.ok || data.ok === false) {
+      throw new Error(data.error || ("HTTP " + resp.status));
+    }
+    return data;
+  }
+
+  function toast(text, bad = false) {
+    const el = $("#toast");
+    el.textContent = text;
+    el.classList.toggle("bad", !!bad);
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => el.classList.remove("show"), 2600);
+  }
+
+  function sheet(show, title, text, spin = true) {
+    const el = $("#sheet");
+    if (!show) { el.classList.remove("show"); return; }
+    $("#sheetTitle").textContent = title || "正在重启桌宠…";
+    $("#sheetText").textContent = text || "";
+    $("#sheetSpin").style.display = spin ? "block" : "none";
+    el.classList.add("show");
+  }
+
+  // ------------------------------------------------------------------ 读值
+  function readControl(el) {
+    if (el.type === "checkbox") return el.checked;
+    if (el.type === "number" || el.type === "range") return Number(el.value);
+    return el.value;
+  }
+
+  // 旧配置里动物语叫 animalese；页面统一按 animal 显示和保存。
+  function voiceKey(cfg) {
+    const v = String(cfg.voice || "mambo").toLowerCase();
+    return v === "animalese" ? "animal" : v;
+  }
+
+  function collect() {
+    const cfg = state.cfg || {};
+    const patch = {};
+    $$("[data-k]").forEach((el) => {
+      const k = el.dataset.k;
+      if (k === "voice") {
+        // 「静音」落 pet_muted（和 Ctrl+Alt+S 同一个开关），音色保留；
+        // 选回音色就自动取消静音，不会出现「页面是曼波、实际被静音压住」。
+        if (!el.checked) return;
+        if (el.value === "off") {
+          if (!cfg.pet_muted) patch.pet_muted = true;
+          return;
+        }
+        if (el.value !== voiceKey(cfg)) patch.voice = el.value;
+        if (cfg.pet_muted) patch.pet_muted = false;
+        return;
+      }
+      if (SECRETS[k]) {
+        const v = el.value.trim();
+        if (v) patch[k] = v;
+        return;
+      }
+      const v = readControl(el);
+      if (k === "tts_port") {
+        if (Number(v) !== Number(cfg.tts_port)) patch.tts_port = Number(v);
+        return;
+      }
+      if (k === "overlay_template") {
+        if (v !== ((cfg.overlay && cfg.overlay.template) || "off")) patch.overlay_template = v;
+        return;
+      }
+      if (k === "game") {
+        if (v !== cfg.game) patch.game = v;
+        return;
+      }
+      if (v !== cfg[k]) patch[k] = v;
+    });
+    return patch;
+  }
+
+  function dirtyCount() {
+    return Object.keys(collect()).length + state.clear.size;
+  }
+
+  function refreshDirty() {
+    const patch = collect();
+    state.patch = patch;
+    const n = dirtyCount();
+    $("#btnSave").disabled = n === 0 || state.busy;
+    if (n === 0) {
+      $("#dockText").textContent = "已与后台同步";
+    } else {
+      const names = Object.keys(patch);
+      const tail = names.length ? names.slice(0, 2).join("、") : "";
+      $("#dockText").textContent = tail ? `${n} 项修改未保存 · ${tail}` : `${n} 项修改未保存`;
+    }
+    // 音量实时显示（不保存也能先看数值）
+    const vol = $("#volume");
+    if (vol) $("#volOut").textContent = Number(vol.value).toFixed(2);
+  }
+
+  // ------------------------------------------------------------------ 渲染
+  function fillSelects(cfg) {
+    const ov = $("#overlaySelect");
+    const ovValue = ov.value;
+    ov.innerHTML = '<option value="off">关闭</option>' +
+      (cfg.overlay?.options || []).map((o) =>
+        `<option value="${o.key}">${o.label}</option>`).join("");
+    ov.value = ovValue || (cfg.overlay && cfg.overlay.template) || "off";
+
+    const gs = $("#gameSelect");
+    const gsValue = gs.value;
+    gs.innerHTML = (cfg.games || []).map((g) =>
+      `<option value="${g.id}">${g.name}</option>`).join("");
+    if (gsValue) gs.value = gsValue;
+
+    const tp = $("#trainPersona");
+    if (tp) {
+      const cur = tp.value;
+      tp.innerHTML = (cfg.personas || []).map((p) =>
+        `<option value="${esc(p.id)}">${esc(p.label || p.id)}</option>`).join("");
+      tp.value = cur || cfg.bili_training_persona || "";
+    }
+
+    const list = $("#modelList");
+    list.innerHTML = (cfg.llm_models || []).map((m) => `<option value="${m}"></option>`).join("");
+  }
+
+  function applyConfig(cfg) {
+    fillSelects(cfg);
+    $$("[data-k]").forEach((el) => {
+      const k = el.dataset.k;
+      if (SECRETS[k]) { el.value = ""; return; }
+      if (k === "voice") {
+        const muted = cfg.voice === "off" || !!cfg.pet_muted;
+        el.checked = el.value === (muted ? "off" : voiceKey(cfg));
+        return;
+      }
+      if (k === "overlay_template") { el.value = (cfg.overlay && cfg.overlay.template) || "off"; return; }
+      if (k === "tts_port") { el.value = cfg.tts_port ?? 9880; return; }
+      if (k === "game") { el.value = cfg.game || ""; return; }
+      if (el.type === "checkbox") { el.checked = !!cfg[k]; return; }
+      el.value = cfg[k] ?? "";
+    });
+    renderMeta(cfg);
+    refreshDirty();
+  }
+
+  function setBadge(sel, on, yes, no) {
+    const el = $(sel);
+    if (!el) return;
+    el.textContent = on ? yes : no;
+    el.classList.toggle("on", !!on);
+  }
+
+  function fmtUptime(sec) {
+    const s = Math.max(0, Number(sec) || 0);
+    if (s < 60) return `${s} 秒`;
+    if (s < 3600) return `${Math.floor(s / 60)} 分 ${s % 60} 秒`;
+    return `${Math.floor(s / 3600)} 时 ${Math.floor((s % 3600) / 60)} 分`;
+  }
+
+  function renderMeta(cfg) {
+    $("#ver").textContent = state.data?.product?.version || "—";
+    $("#srvText").textContent = `127.0.0.1:${cfg.server?.port ?? cfg.port}`;
+    $("#cfgPath").textContent = cfg.config_path || "config.json";
+
+    $("#keyState").textContent = cfg.llm_api_key_set ? "已配置" : "未配置";
+    $("#keyState").classList.toggle("on", !!cfg.llm_api_key_set);
+    $("#keyHint").textContent = cfg.llm_api_key_set
+      ? "已配置（不回显）。填新的才会覆盖，留空保持原值。"
+      : "只存本机，不回显。";
+    setBadge("#cookieState", cfg.bilibili_cookie_set, "已配置", "未配置");
+    const cookie = $('[data-k="bilibili_cookie"]');
+    if (cookie) {
+      cookie.placeholder = cfg.bilibili_cookie_set
+        ? "已配置，留空保持；粘贴新的 Cookie 会覆盖"
+        : "SESSDATA=…; bili_jct=…";
+    }
+    setBadge("#kookTokenState", cfg.kook_bot_token_set, "已配置", "未配置");
+
+    $("#ttsState").textContent = cfg.mambo_online ? "在线" : "离线";
+    $("#ttsState").style.color = cfg.mambo_online ? "var(--ok)" : "var(--dim)";
+
+    $("#gameApi").textContent = cfg.game_api?.api || "未声明";
+    $("#gameApiNote").textContent = cfg.game_api?.name
+      ? `${cfg.game_api.name} 的桥接端口由游戏包 game.json 声明。`
+      : "当前游戏没有声明桥接 API。";
+
+    const auto = cfg.autostart || {};
+    const autoNote = $("#autostartNote");
+    if (autoNote) {
+      if (auto.available === false) {
+        autoNote.textContent = "当前系统不支持开机自启动（只支持 Windows）。";
+      } else if (auto.enabled) {
+        autoNote.textContent = "注册表已写入：开机只会拉起桌宠，不会开控制台。";
+      } else {
+        autoNote.textContent = "未开启；勾选并保存后会写当前用户注册表，不需要管理员权限。";
+      }
+      if (auto.available !== false && !!cfg.pet_autostart !== !!auto.enabled) {
+        autoNote.textContent = "配置和注册表不一致；点一次「保存修改」同步（或关掉再打开）。";
+      }
+    }
+
+    const mem = cfg.memory || {};
+    const memState = $("#memoryState");
+    const memNote = $("#memoryNote");
+    if (memState) {
+      memState.textContent = !cfg.kook_memory
+        ? "已关闭"
+        : (mem.available ? `${mem.turns || 0} 条对话 · ${mem.summaries || 0} 段摘要` : "不可用");
+    }
+    if (memNote) {
+      if (!cfg.kook_memory) {
+        memNote.textContent = "长期记忆关着：对话不写入 SQLite。打开后可保留原文并自动压缩摘要。";
+      } else if (mem.available) {
+        const path = String(mem.path || "").split(/[\\/]/).slice(-3).join("/");
+        memNote.textContent = `待压缩 ${mem.pending || 0} 条 · 长期事实 ${mem.facts || 0} 条 · 本机 ${path || "logs/kook/memory.db"}`;
+      } else {
+        memNote.textContent = "记忆库打不开；检查 logs/kook/memory.db 权限，或先关掉长期记忆。";
+      }
+    }
+
+    const comp = cfg.companion || {};
+    const compState = $("#companionState");
+    const compNote = $("#companionNote");
+    if (compState) {
+      compState.textContent = !cfg.kook_companion
+        ? "已关闭"
+        : (comp.available ? `${comp.mood_label || "—"} · ${comp.energy_label || "—"}` : "还没有记录");
+    }
+    if (compNote) {
+      if (!cfg.kook_companion) {
+        compNote.textContent = "关着：不维护心情/精力/亲近度，也不会按未完话头主动关心。";
+      } else if (!comp.available) {
+        compNote.textContent = "还没有聊天记录；聊几句后这里会显示她的状态、记着的事和快到的日子。";
+      } else {
+        const peer = (comp.peers || [])[0];
+        const bits = [];
+        if (peer) {
+          bits.push(`和 ${peer.name || "对方"}：${peer.label}（认识 ${peer.days} 天，聊过 ${peer.turns} 次）`);
+        }
+        if ((comp.threads || []).length) bits.push(`记着 ${comp.threads.length} 件还没结果的事`);
+        if ((comp.dates || []).length) bits.push(`${comp.dates.length} 个快到的日子`);
+        compNote.textContent = bits.join(" · ") || "暂时没有要跟进的约定。";
+      }
+    }
+
+    const persona = cfg.persona_layers || {};
+    const layers = persona.layers || [];
+    const wrap = $("#personaLayers");
+    if (wrap) {
+      wrap.innerHTML = layers.map((l) => {
+        const active = l.active && (l.text || "").trim();
+        return `<div class="layer">
+          <span class="tag ${active ? "" : "off"}">${l.label || l.scope}</span>
+          <div class="body"><b>${l.name || l.id}${l.title ? " · " + l.title : ""}</b>
+            <small>${l.note || ""}${l.source ? " · " + l.source : ""}${active ? "" : " · 未加载"}</small></div>
+          <div class="meta">${active ? (l.chars || 0) + " 字" : "—"}</div>
+        </div>`;
+      }).join("") || '<div class="hint-line">没有找到性格层文件。</div>';
+    }
+    const preview = $("#personaPreview");
+    if (preview) preview.textContent = persona.preview || "—";
+    const chars = $("#personaChars");
+    if (chars) {
+      chars.textContent = `${(persona.preview || "").length} 字 · 直播/桌宠栈`;
+      const chat = $("#personaChat");
+      if (chat) chat.textContent = persona.chat_persona || "companion";
+    }
+
+    const grid = $("#stickerGrid");
+    if (grid) {
+      grid.innerHTML = (cfg.stickers || []).map((s) =>
+        `<div class="sticker" title="${s.text}"><img src="${s.url}" alt="${s.text}" loading="lazy"><span>${s.when || s.id}</span></div>`
+      ).join("") || '<div class="hint-line">还没有表情包素材。</div>';
+    };
+
+    $("#aboutVer").textContent = state.data?.product?.version || "—";
+    $("#aboutCodename").textContent = state.data?.product?.codename || "—";
+    $("#aboutPid").textContent = cfg.server?.pid ?? "—";
+    $("#aboutUptime").textContent = fmtUptime(cfg.server?.uptime);
+    $("#aboutPort").textContent = cfg.server?.port ?? cfg.port;
+    $("#aboutConfig").textContent = cfg.config_path || "config.json";
+    $("#aboutConfig2").textContent = cfg.config_path || "config.json";
+    $("#aboutLogs").textContent = cfg.logs_path || "logs";
+
+    const env = Object.values(cfg.env_overrides || {});
+    $("#envNote").classList.toggle("show", env.length > 0);
+    $("#envText").textContent = env.length
+      ? `环境变量 ${env.join(" / ")} 正在覆盖对应字段，页面保存的值会被它们压住。`
+      : "";
+  }
+
+  function renderTraining(t) {
+    t = t || {};
+    const running = !!t.running;
+    const favorites = t.mode === "favorites";
+    const btn = $("#trainToggle");
+    if (btn) {
+      btn.textContent = running
+        ? (favorites ? "停止扫描（扫收藏夹）" : "停止训练（摸鱼中）")
+        : "启动训练";
+      btn.classList.toggle("danger", running);
+    }
+    const favBtn = $("#trainFav");
+    if (favBtn) {
+      favBtn.textContent = running && favorites ? "扫描中…" : "快速扫收藏夹";
+      favBtn.disabled = running;
+      favBtn.title = running ? "先停止当前训练/扫描"
+        : "不等待视频时长，只读公开文字写长期记忆";
+    }
+    const line = $("#trainStatus");
+    if (!line) return;
+    if (running && favorites) {
+      const total = Number(t.total || 0), done = Number(t.done || 0);
+      const progress = total > 0 ? ` ${done}/${total}` : "";
+      const left = total > 0 ? ` · 剩 ${Math.max(0, Number(t.remaining ?? (total - done)))}` : "";
+      line.textContent = `扫收藏夹${progress}${left} · 新记忆 ${Number(t.scanned || 0)} 条 · ${t.last || "读评论…"}`;
+    } else if (running) {
+      const phase = t.phase === "watching" ? "摸鱼看视频" :
+        t.phase === "loading" ? "看评论/弹幕" :
+        t.phase === "saving" || t.phase === "saved" ? "写记忆" : "摸鱼ing";
+      const pos = Number(t.position_s || 0), dur = Number(t.duration_s || 0);
+      const clock = dur > 0 ? ` ${fmtClock(pos)}/${fmtClock(dur)}` : "";
+      line.textContent = `${phase}${clock} · ${t.last || "摸鱼ing"}`;
+    } else if (favorites && ["done", "paused", "stopped"].includes(t.phase)) {
+      line.textContent = t.last || "收藏夹这轮扫完了。";
+    } else if (t.error) {
+      line.textContent = `上次训练中断：${t.error}`;
+    } else {
+      line.textContent = "训练会按视频时长等间隔“云看”，不打开视频；快速扫收藏夹不等待时长，只读公开文字写长期记忆。";
+    }
+  }
+
+  function renderCompress(c) {
+    c = c || {};
+    const running = !!c.running;
+    const btn = $("#trainCompress");
+    if (btn) {
+      btn.textContent = running ? "压缩中…" : "压缩记忆";
+      btn.disabled = running;
+      btn.classList.toggle("danger", running);
+    }
+    const line = $("#trainDigest");
+    if (!line) return;
+    const d = c.digest || {};
+    if (running) {
+      const total = Number(c.chunks || 0), done = Number(c.done_chunks || 0);
+      const part = total > 0 ? ` ${done}/${total} 段` : "";
+      line.textContent = `压缩 B 站记忆${part} · ${c.last || "读取记忆…"}`;
+    } else if (d.exists && d.text) {
+      line.textContent = `压缩记忆：${d.source_count || 0} 条 → ${d.chars || 0} 字 · ${d.updated_at || ""}`;
+    } else if (c.error) {
+      line.textContent = `上次压缩失败：${c.error}`;
+    } else {
+      line.textContent = "还没压缩；条目多了以后可以压成一段长期画像，原始记忆仍保留。";
+    }
+  }
+
+  function fmtClock(sec) {
+    const s = Math.max(0, Math.floor(Number(sec) || 0));
+    return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  async function getTrainingStatus() {
+    try {
+      const r = await fetch("/api/bili/training/status", {cache: "no-store"});
+      return await r.json();
+    } catch (_) {
+      return {running: false};
+    }
+  }
+
+  async function trainToggle() {
+    const st = await getTrainingStatus();
+    if (st.running) {
+      const res = await api("/api/bili/training/stop", {});
+      toast(res.stopping ? "正在停止训练…" : "训练已停止");
+      setTimeout(async () => renderTraining(await getTrainingStatus()), 800);
+      return;
+    }
+    if (dirtyCount()) {
+      const saved = await save();
+      if (!saved) return;
+    }
+    const res = await api("/api/bili/training/start", {
+      persona: $("#trainPersona")?.value || "",
+      keywords: $('[data-k="bili_training_keywords"]')?.value || "",
+    });
+    renderTraining(res.status || await getTrainingStatus());
+    toast(res.message || "训练已启动");
+  }
+
+  async function trainFavorites() {
+    const st = await getTrainingStatus();
+    if (st.running) {
+      toast("已经在跑了，先点「停止」再扫收藏夹", true);
+      return;
+    }
+    const mediaId = Number($('[data-k="bili_favorites_id"]')?.value || 0);
+    if (!mediaId) {
+      toast("先填收藏夹 ID（favlist 链接里的 fid）", true);
+      return;
+    }
+    if (dirtyCount()) {
+      const saved = await save();
+      if (!saved) return;
+    }
+    const rawLimit = Number($('[data-k="bili_favorites_batch"]')?.value);
+    const res = await api("/api/bili/training/start", {
+      mode: "favorites",
+      media_id: mediaId,
+      persona: $("#trainPersona")?.value || "",
+      limit: Number.isFinite(rawLimit) ? Math.max(0, rawLimit) : 0,
+    });
+    renderTraining(res.status || await getTrainingStatus());
+    toast(res.message || "开始扫收藏夹");
+  }
+
+  async function getCompressStatus() {
+    try {
+      const r = await fetch("/api/bili/training/compress/status", {cache: "no-store"});
+      return await r.json();
+    } catch (_) {
+      return {running: false};
+    }
+  }
+
+  async function compressTraining() {
+    if (dirtyCount()) {
+      const saved = await save();
+      if (!saved) return;
+    }
+    const res = await api("/api/bili/training/compress/start", {
+      persona: $("#trainPersona")?.value || "",
+    });
+    renderCompress(res.status || await getCompressStatus());
+    toast(res.message || "开始压缩 B 站记忆");
+  }
+
+  async function clearCompress() {
+    if (!confirm("清除压缩记忆？原始训练/收藏记忆不会删，人格会回到逐条注入。")) return;
+    const res = await api("/api/bili/training/compress/clear", {});
+    renderCompress(res.digest ? {digest: res.digest} : await getCompressStatus());
+    toast("压缩记忆已清除");
+  }
+
+  function renderAll(data) {
+    state.data = data;
+    state.cfg = data.config;
+    applyConfig(data.config);   // 里面会调 refreshDirty()，底栏文案以它为准
+    renderTraining(data.config.bili_training);
+    renderCompress(data.config.bili_training_compress);
+    $("#dockDot").classList.add("ok");
+  }
+
+  // ------------------------------------------------------------------ 保存
+  function buildBody() {
+    const body = { ...collect() };
+    state.clear.forEach((k) => { body[SECRETS[k]] = true; });
+    return body;
+  }
+
+  async function save() {
+    const body = buildBody();
+    if (!Object.keys(body).length) return null;
+    state.busy = true;
+    $("#btnSave").disabled = true;
+    try {
+      const res = await api("/api/settings", body);
+      state.clear.clear();
+      renderAll(res);
+      const restart = res.restart_required || [];
+      if (restart.length) {
+        $("#restartHint").hidden = false;
+        toast("已保存；端口改动要点「重启桌宠」才生效");
+      } else {
+        toast("已保存到 config.json");
+      }
+      return res;
+    } catch (err) {
+      toast("保存失败：" + err.message, true);
+      return null;
+    } finally {
+      state.busy = false;
+      refreshDirty();
+    }
+  }
+
+  async function doRestart() {
+    if (dirtyCount()) {
+      const res = await save();
+      if (!res) return;
+    }
+    const oldPort = Number(location.port) || Number(state.cfg?.port) || 8730;
+    const newPort = Number(state.cfg?.port) || oldPort;
+    sheet(true, "正在重启桌宠…", "旧窗口正在退出，新窗口起来后会自动回到这里");
+    let res;
+    try {
+      res = await api("/api/app/restart", {});
+    } catch (err) {
+      sheet(false);
+      toast("重启失败：" + err.message, true);
+      return;
+    }
+    const target = Number(res.port) || newPort;
+    const ok = await waitRestart(oldPort, target);
+    if (!ok) {
+      sheet(true, "没等到新窗口", "看看 logs/pet_restart.log；也可以手动重新运行 python main.py", false);
+      return;
+    }
+    if (target === oldPort) {
+      location.reload();
+    } else {
+      location.href = `http://127.0.0.1:${target}/settings`;
+    }
+  }
+
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  async function probe(url) {
+    try {
+      await fetch(url, { mode: "no-cors", cache: "no-store" });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function waitRestart(oldPort, newPort) {
+    // 同端口重启：先等旧服务真的挂掉，再等新的起来，避免页面刷在旧服务上。
+    if (newPort === oldPort) {
+      for (let i = 0; i < 40; i++) {
+        if (!(await probe(`http://127.0.0.1:${oldPort}/health`))) break;
+        await sleep(250);
+      }
+    }
+    for (let i = 0; i < 60; i++) {
+      if (await probe(`http://127.0.0.1:${newPort}/health`)) return true;
+      await sleep(300);
+    }
+    return false;
+  }
+
+  // ------------------------------------------------------------------ 动作
+  async function runAction(name) {
+    if (state.busy) return;
+    if (name === "train-toggle") {
+      state.busy = true;
+      refreshDirty();
+      try { await trainToggle(); }
+      catch (err) { toast("训练操作失败：" + err.message, true); }
+      finally { state.busy = false; refreshDirty(); }
+      return;
+    }
+    if (name === "train-favorites") {
+      state.busy = true;
+      refreshDirty();
+      try { await trainFavorites(); }
+      catch (err) { toast("扫收藏夹失败：" + err.message, true); }
+      finally { state.busy = false; refreshDirty(); }
+      return;
+    }
+    if (name === "train-compress") {
+      state.busy = true;
+      refreshDirty();
+      try { await compressTraining(); }
+      catch (err) { toast("压缩失败：" + err.message, true); }
+      finally { state.busy = false; refreshDirty(); }
+      return;
+    }
+    if (name === "train-compress-clear") {
+      state.busy = true;
+      refreshDirty();
+      try { await clearCompress(); }
+      catch (err) { toast("清除压缩失败：" + err.message, true); }
+      finally { state.busy = false; refreshDirty(); }
+      return;
+    }
+    if (name === "train-keywords") {
+      const row = $("#trainKeywordsRow");
+      row.hidden = !row.hidden;
+      if (!row.hidden) $('[data-k="bili_training_keywords"]').focus();
+      return;
+    }
+    const calls = {
+      "play-local": () => api("/api/play/start", { mode: "local" }),
+      "play-llm": () => api("/api/play/start", { mode: "llm" }),
+      "play-stop": () => api("/api/play/stop", {}),
+      launch: () => api("/api/game/launch", {}),
+      director: () => api("/api/play/start", { mode: "director" }),
+      "start-mambo": () => api("/api/voice/start", { voice: "mambo" }),
+      "stop-mambo": () => api("/api/voice/stop", {}),
+      quit: async () => {
+        if (!confirm("确定退出桌宠？设置页也会一起关掉。")) return {};
+        const res = await api("/api/app/quit", {});
+        sheet(true, "桌宠已退出", "这个窗口可以关掉了", false);
+        return res;
+      },
+      studio: () => { window.open("/studio", "_blank"); return Promise.resolve({}); },
+    };
+    if (name === "audition") return audition();
+    const fn = calls[name];
+    if (!fn) return;
+    state.busy = true;
+    refreshDirty();
+    try {
+      const res = await fn();
+      if (res && res.message) toast(res.message);
+      else if (res && res.ok) toast("已发送");
+    } catch (err) {
+      toast("操作失败：" + err.message, true);
+    } finally {
+      state.busy = false;
+      refreshDirty();
+    }
+  }
+
+  async function audition() {
+    const resp = await fetch("/api/voice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "大家好，我是雷霆小肥鱼。", voice: "mambo" }),
+    });
+    const type = resp.headers.get("content-type") || "";
+    if (!resp.ok || !type.startsWith("audio")) {
+      let msg = "曼波引擎还没就绪";
+      try { const e = await resp.json(); msg = e.error || e.message || msg; } catch (_) {}
+      throw new Error(msg);
+    }
+    const blob = await resp.blob();
+    const audio = new Audio(URL.createObjectURL(blob));
+    audio.play();
+    toast("试听中…");
+  }
+
+  // ------------------------------------------------------------------ 导航
+  function show(name) {
+    if (!document.getElementById("view-" + name)) name = "pet";
+    $$(".nav").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
+    $$(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + name));
+    history.replaceState(null, "", "#" + name);
+    $("#main").scrollTop = 0;
+  }
+
+  // ------------------------------------------------------------------ 轮询
+  async function poll() {
+    if (state.busy) return;
+    try {
+      const data = await api("/api/settings");
+      $("#dot").classList.add("ok");
+      $("#ver").textContent = data.product?.version || "—";
+      $("#srvText").textContent = `127.0.0.1:${data.config.server?.port ?? data.config.port}`;
+      // 没有未保存修改、也没在输入框里时才覆盖表单，避免把光标/选区打回去
+      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
+      if (dirtyCount() === 0 && !typing) renderAll(data);
+      else {
+        state.data = data;
+        renderTraining(data.config.bili_training);
+        renderCompress(data.config.bili_training_compress);
+      }
+    } catch (_) {
+      $("#dot").classList.remove("ok");
+      $("#srvText").textContent = "后台未响应";
+      $("#dockDot").classList.remove("ok");
+    }
+  }
+
+  // ------------------------------------------------------------------ 绑定
+  document.addEventListener("input", (ev) => {
+    const el = ev.target;
+    if (el && el.dataset && SECRETS[el.dataset.k]) state.clear.delete(el.dataset.k);
+    refreshDirty();
+  });
+  document.addEventListener("change", refreshDirty);
+
+  document.addEventListener("click", (ev) => {
+    const clear = ev.target.closest("[data-clear]");
+    if (clear) {
+      const k = clear.dataset.clear;
+      state.clear.add(k);
+      toast(`保存后会清除${CLEAR_LABEL[k] || k}`);
+      refreshDirty();
+      return;
+    }
+    const act = ev.target.closest("[data-act]");
+    if (act) {
+      if (act.dataset.act === "restart") doRestart();
+      else runAction(act.dataset.act);
+      return;
+    }
+    const nav = ev.target.closest(".nav");
+    if (nav) show(nav.dataset.view);
+  });
+
+  $("#btnSave").addEventListener("click", save);
+  $("#btnRestart").addEventListener("click", doRestart);
+  $("#volume").addEventListener("input", refreshDirty);
+
+  document.addEventListener("keydown", (ev) => {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") {
+      ev.preventDefault();
+      if (!state.busy) save();
+    }
+  });
+
+  // ------------------------------------------------------------------ 启动
+  show((location.hash || "#pet").slice(1));
+  api("/api/settings")
+    .then((data) => {
+      renderAll(data);
+      $("#dot").classList.add("ok");
+    })
+    .catch((err) => {
+      $("#dockText").textContent = "读不到后台配置：" + err.message;
+      $("#dockDot").classList.remove("ok");
+      toast("请从桌宠右键「⚙️ 设置」打开本页", true);
+    });
+  setInterval(poll, 5000);
+})();
+</script>
+</body>
+</html>

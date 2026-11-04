@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>小肥鱼 · 直播舞台</title>
+<style>
+  :root { --text:#dce6f5; --dim:#7d8aa5; --accent:#5eead4; --hue:190; }
+  * { margin:0; box-sizing:border-box; }
+  html,body { height:100%; overflow:hidden; font:"Microsoft YaHei",system-ui,sans-serif; color:var(--text); background:#04080f; }
+  /* 竖屏（默认）：#stage 锁 9:16 居中，两侧留黑边；横屏模式铺满 */
+  #stage { position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%);
+           height:min(100vh, calc(100vw * 16 / 9)); aspect-ratio:9 / 16; overflow:hidden;
+           background:
+             radial-gradient(1200px 700px at 50% 88%, hsla(var(--hue),80%,45%,.20), transparent 62%),
+             radial-gradient(900px 500px at 82% 12%, hsla(var(--hue),70%,55%,.10), transparent 60%),
+             linear-gradient(160deg,#07101f 0%,#0c1b33 55%,hsl(var(--hue),52%,16%) 100%);
+           transition: background 1.2s ease; }
+  body.layout-landscape #stage { height:100vh; aspect-ratio:auto; left:0; transform:none; width:100vw; }
+
+  /* 顶部：防录播时钟 */
+  #topbar { position:absolute; top:14px; right:20px; text-align:right; z-index:6; }
+  #clock { font:600 20px Consolas, monospace; letter-spacing:2px; text-shadow:0 0 12px hsla(var(--hue),80%,60%,.4); }
+  #rec { font-size:11px; color:#f87171; letter-spacing:3px; animation:breath 2.4s ease-in-out infinite; }
+  #mood { font-size:11px; color:var(--dim); margin-top:2px; }
+  @keyframes breath { 0%,100%{opacity:.35} 50%{opacity:1} }
+
+  /* 中央：Live2D 画布（相对 #stage 取百分比，竖横屏自适应） */
+  #avatarSlot { position:absolute; left:50%; transform:translateX(-50%);
+                bottom:9%; width:96%; height:70%; z-index:3; }
+  body.layout-landscape #avatarSlot { bottom:-2vh; width:min(58vh,72vw); height:min(88vh,100vw); }
+  #avatarSlot canvas { width:100% !important; height:100% !important; }
+
+  /* 底部：字幕条（句级高亮） */
+  #subtitle { position:absolute; left:50%; bottom:3.2%; transform:translateX(-50%); max-width:88%;
+    background:rgba(7,16,31,.74); border:1px solid hsla(var(--hue),70%,60%,.28); border-radius:12px;
+    padding:10px 18px; font-size:19px; line-height:1.5; text-align:center; backdrop-filter:blur(6px);
+    box-shadow:0 8px 40px rgba(0,0,0,.45); z-index:5; }
+  body.layout-landscape #subtitle { bottom:6.5vh; font-size:24px; padding:14px 28px; max-width:78vw; }
+  #subtitle .hl { color:var(--accent); text-shadow:0 0 14px hsla(var(--hue),80%,60%,.55); }
+  #subtitle:empty { opacity:0; }
+
+  /* 互动气泡：抖音习惯——堆在字幕上方左侧 */
+  #ticker { position:absolute; left:3%; bottom:13%; width:70%; display:flex; flex-direction:column;
+            align-items:flex-start; gap:5px; z-index:5; }
+  body.layout-landscape #ticker { bottom:20px; width:auto; }
+  .tick { background:rgba(17,26,44,.86); border:1px solid hsla(var(--hue),60%,60%,.18); border-radius:10px;
+          padding:5px 10px; font-size:12px; animation:pop .25s ease; max-width:100%; }
+  .tick.gift { border-color:rgba(251,191,36,.5); color:#fde68a; }
+  @keyframes pop { from{transform:translateY(8px);opacity:0} to{transform:none;opacity:1} }
+
+  #loadmsg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+             color:var(--dim); font-size:14px; z-index:2; }
+  body.gallery #topbar, body.gallery #growthBar, body.gallery #champion,
+  body.gallery #subtitle, body.gallery #ticker, body.gallery #tips,
+  body.gallery #nameplate, body.gallery .bubble { display:none !important; }
+  body.gallery #avatarSlot { width:100%; height:100%; bottom:0; }
+
+  /* ── 批次2：养成/跳舞特效 ── */
+  #growthBar { position:absolute; left:3%; top:3%; z-index:5; background:rgba(17,26,44,.8);
+               border:1px solid hsla(var(--hue),60%,60%,.25); border-radius:10px; padding:5px 10px; font-size:11px; }
+  #growthBar .bar { width:130px; height:5px; background:#0e1730; border-radius:3px; margin-top:4px; overflow:hidden; }
+  #growthBar .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),#7dd3fc); transition:width .6s; }
+  #champion { position:absolute; left:3%; top:12%; z-index:5; font-size:11px; color:var(--dim); line-height:1.7; }
+  #champion b { color:#fde68a; }
+  #levelup { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+             z-index:8; pointer-events:none; background:radial-gradient(circle, rgba(251,191,36,.28), transparent 65%); }
+  #levelup .txt { font-size:40px; font-weight:700; color:#fde68a; text-shadow:0 0 30px rgba(251,191,36,.8);
+                  animation:pop .5s ease; text-align:center; }
+  #stage.disco { animation:disco .5s linear infinite; }
+  @keyframes disco { 0%{filter:hue-rotate(0deg) saturate(1.4)} 25%{filter:hue-rotate(90deg) saturate(1.6)}
+                     50%{filter:hue-rotate(180deg) saturate(1.4)} 75%{filter:hue-rotate(270deg) saturate(1.6)}
+                     100%{filter:hue-rotate(360deg) saturate(1.4)} }
+  #topbar { position:absolute; top:3%; right:4%; text-align:right; z-index:6; }
+
+  /* ── 深海氛围：上浮气泡 ── */
+  .bubble { position:absolute; bottom:-30px; border-radius:50%; pointer-events:none; z-index:2;
+            background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.35), rgba(94,234,212,.12) 60%, transparent);
+            border:1px solid rgba(255,255,255,.18); animation:rise linear infinite; }
+  @keyframes rise { from{transform:translateY(0); opacity:.9} to{transform:translateY(-110vh); opacity:0} }
+  /* ── 互动玩法引导条 ── */
+  #tips { position:absolute; right:4%; bottom:13%; z-index:5; text-align:right; }
+  .tip { display:inline-block; background:rgba(17,26,44,.72); border:1px solid hsla(var(--hue),60%,60%,.2);
+         border-radius:9px; padding:4px 10px; font-size:11px; color:var(--dim); margin-top:5px; }
+  .tip b { color:var(--accent); font-weight:600; }
+  /* ── 角色名牌 ── */
+  #nameplate { position:absolute; left:50%; transform:translateX(-50%); top:2.5%; z-index:6; text-align:center; }
+  #nameplate .nm { font-size:17px; font-weight:700; letter-spacing:2px;
+                   text-shadow:0 0 18px hsla(var(--hue),80%,60%,.5); }
+  #nameplate .sub { font-size:10px; color:var(--dim); letter-spacing:4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="loadmsg">正在加载 Live2D 运行库与模型…</div>
+  <div id="nameplate"><div class="nm">小 鱼</div><div class="sub">深海直播间 · 傲娇小肥鱼</div></div>
+  <div id="topbar">
+    <div id="clock">--:--:--</div><div id="rec">● LIVE</div>
+    <div id="mood">心情 --/100</div>
+  </div>
+  <div id="avatarSlot"></div>
+  <div id="levelup"><div class="txt" id="levelupTxt"></div></div>
+    <div id="growthBar">🐠 <span id="gLevel">鱼苗</span> · <span id="gWeight">180g</span>
+    <div class="bar"><i id="gBar" style="width:5%"></i></div></div>
+  <div id="champion"></div>
+  <div id="tips">
+    <span class="tip">💬 直接弹幕聊天 · 带<b>小鱼</b>她会优先回你</span>
+    <span class="tip">🎵 发 <b>点歌 歌名</b> 任意点歌 · <b>切歌</b> 跳过</span>
+    <span class="tip">🐟 送礼物<b>投喂</b>小鱼会长大进化</span>
+    <span class="tip">💃 发 <b>跳舞</b> 看雷霆舞王</span>
+  </div>
+  <div id="subtitle"></div>
+  <div id="ticker"></div>
+</div>
+<script>
+// 深海气泡：按屏幕宽度生成，纯装饰
+(function bubbles(){
+  const stage = document.getElementById("stage");
+  const n = Math.min(14, Math.floor(stage.clientWidth / 90));
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement("div");
+    b.className = "bubble";
+    const size = 6 + Math.random() * 22;
+    b.style.width = b.style.height = size + "px";
+    b.style.left = (Math.random() * 96) + "%";
+    b.style.animationDuration = (9 + Math.random() * 10) + "s";
+    b.style.animationDelay = (Math.random() * 10) + "s";
+    stage.appendChild(b);
+  }
+})();
+</script>
+
+<script src="/static/vendor/live2dcubismcore.min.js"></script>
+<script src="/static/vendor/pixi.min.js"></script>
+<script src="/static/vendor/cubism4.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[<>&]/g, c => ({"<":"&lt;","&gt":"&gt;","&":"&amp;"}[c]||c));
+// 模型三优先级：URL ?model= → config render.live2d.model → 默认 haru
+let MODEL_URL = new URLSearchParams(location.search).get("model");
+if (MODEL_URL && !MODEL_URL.startsWith("/model/")) MODEL_URL = "/model/" + MODEL_URL;
+// 画廊模式：只留模型本体（挑选页 iframe 用）
+const GALLERY = new URLSearchParams(location.search).get("gallery") === "1";
+if (GALLERY) document.documentElement.style.setProperty("--gallery", "1");
+
+// 表情映射（Haru F01-F08；可在 config 调整）
+const EMOTION_EXP = { happy:"f04", shy:"f02", tsundere:"f03", neutral:null };
+
+let model = null, lipTickerId = null;
+let audioCtx = null, analyser = null, srcNode = null;
+let mouthParam = null, currentSpeech = 0;
+
+async function initAvatar() {
+  try {
+    if (!MODEL_URL) {
+      try {
+        const cfg = await (await fetch("/api/config")).json();
+        MODEL_URL = "/model/" + (cfg.render?.live2d?.model || "haru/haru_greeter_t03.model3.json");
+      } catch (e) { MODEL_URL = "/model/haru/haru_greeter_t03.model3.json"; }
+    }
+    // 布局：URL ?layout= > config render.layout > 默认竖屏（抖音 9:16）
+    let layout = new URLSearchParams(location.search).get("layout");
+    if (!layout) {
+      try {
+        const cfg2 = await (await fetch("/api/config")).json();
+        layout = cfg2.render?.layout || "portrait";
+      } catch (e) { layout = "portrait"; }
+    }
+    document.body.classList.add(layout === "landscape" ? "layout-landscape" : "layout-portrait");
+    window.__layout = layout;
+    PIXI.live2d.Live2DModel.registerTicker(PIXI.Ticker);
+    model = await PIXI.live2d.Live2DModel.from(MODEL_URL, { autoInteract: false });
+    const slot = $("#avatarSlot");
+    const canvas = document.createElement("canvas");
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    slot.appendChild(canvas);
+    const app = new PIXI.Application({
+      view: canvas, backgroundAlpha: 0, autoDensity: true,
+      resolution: window.devicePixelRatio || 1,
+      width: slot.clientWidth, height: slot.clientHeight,
+    });
+    app.stage.addChild(model);
+    model.anchor.set(0.5, 0.5);
+    // 竖屏：完整展示全身（不再裁头切脚），底部留出字幕区
+    const portrait = window.__layout !== "landscape";
+    baseY = slot.clientHeight * (portrait ? 0.52 : 0.5);
+    model.position.set(slot.clientWidth / 2, baseY);
+    const fit = Math.min(slot.clientWidth / model.internalModel.originalWidth,
+                         slot.clientHeight / model.internalModel.originalHeight);
+    model.scale.set(fit * (portrait ? 1.02 : 1.15));
+    mouthParam = model.internalModel.coreModel.getParameterIndex("ParamMouthOpenY");
+    $("#loadmsg").remove();
+  } catch (e) {
+    $("#loadmsg").textContent = "Live2D 加载失败：" + e.message + "（舞台退回占位模式）";
+    console.error(e);
+  }
+}
+
+// 待机沉浮（Live2D 自带 idle motion 负责动作，这里只做画布级微动）
+let breathT = 0, baseY = 0;
+setInterval(() => {
+  if (!model) return;
+  breathT += 0.05;
+  model.y = baseY + Math.sin(breathT) * 4;
+}, 50);
+
+// ---------------- 口型同步：Web Audio 振幅 → ParamMouthOpenY ----------------
+function playAudio(url, segments) {
+  const speech = ++currentSpeech;
+  const audio = new Audio(url);
+  audio.crossOrigin = "anonymous";
+  audio.onended = () => { if (speech === currentSpeech) setMouth(0); };
+  audio.onerror = () => { if (speech === currentSpeech) setMouth(0); };
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (srcNode) try { srcNode.disconnect(); } catch (e) {}
+    srcNode = audioCtx.createMediaElementSource(audio);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    srcNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    tickMouth(speech);
+  } catch (e) { /* 音频路由失败只影响口型，不影响播放 */ }
+  audio.play().catch(() => {});
+  saySubtitle(segments && segments.length ? segments : [{text: audioTitle(url), start_ms:0, end_ms: 4000}]);
+}
+function audioTitle(u){ return decodeURIComponent(u.split("/").pop() || ""); }
+
+function tickMouth(speech) {
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  let smoothed = 0;
+  const loop = () => {
+    if (speech !== currentSpeech) { setMouth(0); return; }
+    if (analyser) {
+      analyser.getByteFrequencyData(buf);
+      // 只取人声频段（约 300~3400Hz），避开低频音乐/高频噪声
+      const binHz = audioCtx.sampleRate / 2 / buf.length;
+      const lo = Math.max(1, Math.floor(300 / binHz));
+      const hi = Math.min(buf.length - 1, Math.ceil(3400 / binHz));
+      let sum = 0, n = 0;
+      for (let i = lo; i <= hi; i++) { sum += buf[i]; n++; }
+      const rms = n ? (sum / n) / 255 : 0;
+      // 非线性曲线：小声也张嘴，大声不爆表
+      const target = Math.min(1, Math.pow(rms * 3.2, 0.85));
+      // 快开慢合：开口跟得上字，闭口不抽搐
+      smoothed = target > smoothed
+        ? smoothed + (target - smoothed) * 0.55
+        : smoothed + (target - smoothed) * 0.12;
+      setMouth(smoothed);
+      // 说话时嘴型带一点笑意（MouthForm），让“夹子音”更贴
+      setParam("ParamMouthForm", 0.35 * smoothed);
+    }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+function setMouth(v) {
+  if (!model || mouthParam < 0) return;
+  model.internalModel.coreModel.setParameterValueByIndex(mouthParam, v);
+}
+function setParam(name, v) {
+  if (!model) return;
+  const i = model.internalModel.coreModel.getParameterIndex(name);
+  if (i >= 0) model.internalModel.coreModel.setParameterValueByIndex(i, v);
+}
+
+// ---------------- 字幕（句级高亮） ----------------
+let subTimer = null;
+function saySubtitle(segments) {
+  clearTimeout(subTimer);
+  const el = $("#subtitle");
+  const t0 = performance.now();
+  const render = () => {
+    if (currentSpeech !== segments.__speech) return;
+    const now = performance.now() - t0;
+    el.innerHTML = segments.map(seg =>
+      `<span class="${now >= seg.start_ms && now < seg.end_ms ? "hl" : ""}">${esc(seg.text)}</span>`).join("");
+    if (now < segments[segments.length-1].end_ms + 2000) subTimer = setTimeout(render, 80);
+    else el.textContent = "";
+  };
+  segments.__speech = currentSpeech;
+  render();
+}
+
+// ---------------- 表情 / 灯光 / 待机 ----------------
+function setEmotion(emotion) {
+  if (!model) return;
+  const name = EMOTION_EXP[emotion];
+  try {
+    if (name) model.expression(name);
+    else model.internalModel.motionManager.expressionManager && model.internalModel.motionManager.expressionManager.resetExpression();
+  } catch (e) {}
+}
+function setMoodLight(mood) {
+  $("#mood").textContent = `心情 ${mood}/100`;
+  // 低落偏紫暗，兴奋偏青亮
+  const hue = mood >= 60 ? 174 + (mood-60) * 0.4 : 260 + mood * 0.5;
+  const light = 30 + mood * 0.18;
+  document.documentElement.style.setProperty("--hue", Math.round(hue % 360));
+}
+
+// 防录播动态时钟
+setInterval(() => {
+  const d = new Date();
+  $("#clock").textContent = d.toLocaleTimeString("zh-CN", {hour12:false}) + "." + String(d.getMilliseconds()).padStart(3,"0");
+}, 200);
+
+// ---------------- 事件流 ----------------
+const es = new EventSource("/api/events");
+es.onmessage = (m) => { try { handle(JSON.parse(m.data)); } catch(e) {} };
+
+function handle(d) {
+  const v = d.data || {};
+  if (d.topic === "live.event") {
+    if (v.type === "comment") tick(`${esc(v.nickname)}：${esc(v.content)}`);
+    else if (v.type === "member") tick(`${esc(v.nickname)} 来了 ✦`);
+    else if (v.type === "gift") tick(`${esc(v.nickname)} 送 ${esc(v.gift_name)}×${v.gift_num}`, true);
+    else if (v.type === "follow") tick(`${esc(v.nickname)} 关注了主播`, true);
+  }
+  if (d.topic === "brain.reply") {
+    setEmotion(v.emotion);
+    if (v.voice !== false && !$("#subtitle").textContent) $("#subtitle").textContent = v.text || "";
+  }
+  if (d.topic === "voice.ready" && v.url) playAudio(v.url, v.segments);   // 整句模式（模板/彩蛋）
+  if (d.topic === "voice.seg_ready") onSegReady(v);                       // 流式分段模式（聊天）
+  if (d.topic === "voice.speaking") duckBGM(v.speaking);
+  if (d.topic === "brain.mood") setMoodLight(v.mood);
+  if (d.topic === "stage.command") {
+    if (v.action === "motion") playMotion(v.motion);
+    if (v.action === "effect" && v.effect === "levelup") levelupEffect(v.level || "");
+  }
+  if (d.topic === "show.music") handleMusic(v);
+  if (d.topic === "growth.update") handleGrowth(v);
+}
+
+// ── 流式分段语音链：client_id + seq 顺序播放，新链抢占 ──
+let chains = {}, currentChain = null, chainAudio = null, speechCounter = 0;
+function onSegReady(v) {
+  const c = chains[v.client_id] || (chains[v.client_id] = { segs: {}, next: 0 });
+  c.segs[v.seq] = v;
+  if (!v.url) {                       // 合成失败：字幕兜底，继续推进
+    $("#subtitle").textContent = v.text || "";
+    c.next++;
+    if (v.client_id === currentChain) playNext(v.client_id);
+    return;
+  }
+  if (v.client_id !== currentChain) { // 新链抢占
+    if (chainAudio) chainAudio.pause();
+    currentChain = v.client_id;
+    playNext(v.client_id);
+  } else if (c.next === v.seq) {
+    playNext(v.client_id);
+  }
+}
+function playNext(cid) {
+  const c = chains[cid];
+  if (!c || cid !== currentChain) return;
+  const seg = c.segs[c.next];
+  if (!seg) return;                   // 下一段还没合成完，到达时再触发
+  c.next++;
+  playSeg(cid, seg);
+}
+function playSeg(cid, seg) {
+  speechCounter++;
+  setEmotion(seg.emotion);
+  $("#subtitle").textContent = seg.text || "";
+  duckBGM(true);
+  const audio = new Audio(seg.url);
+  audio.crossOrigin = "anonymous";
+  audio.onended = () => {
+    duckBGM(false);
+    setMouth(0);
+    if (currentChain === cid) playNext(cid);
+  };
+  audio.onerror = () => { duckBGM(false); if (currentChain === cid) playNext(cid); };
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (srcNode) try { srcNode.disconnect(); } catch (e) {}
+    srcNode = audioCtx.createMediaElementSource(audio);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    srcNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    tickMouth(speechCounter);
+  } catch (e) {}
+  audio.play().catch(() => {});
+}
+
+// ── 批次2：养成 / 升级特效 / 舞蹈模式 / 榜一 ──
+function handleGrowth(v) {
+  $("#gLevel").textContent = v.level || "";
+  $("#gWeight").textContent = (v.weight || 0) + "g";
+  if (v.next_at) {
+    const base = {"鱼苗":0,"小肥鱼":500,"雷霆小肥鱼":1500,"雷霆雷霆小肥鱼":3500,"传说之鱼":8000}[v.level] || 0;
+    $("#gBar").style.width = Math.min(100, (v.weight - base) / (v.next_at - base) * 100) + "%";
+  } else { $("#gBar").style.width = "100%"; }
+  if (v.gain >= 100) tick(`${esc(v.by)} 投喂 +${v.gain}g`, true);
+}
+function levelupEffect(level) {
+  $("#levelupTxt").textContent = `🎉 进化 · ${level} 🎉`;
+  $("#levelup").style.display = "flex";
+  setTimeout(() => $("#levelup").style.display = "none", 3200);
+}
+let danceTimer = null;
+function danceMode(seconds) {
+  $("#stage").classList.add("disco");
+  clearTimeout(danceTimer);
+  danceTimer = setTimeout(() => $("#stage").classList.remove("disco"), (seconds || 25) * 1000);
+  if (model) {  // Live2D 舞蹈模式：Tap 动作循环
+    const loop = () => { if (!$("#stage").classList.contains("disco")) return;
+      try { model.motion("Tap", Math.floor(Math.random()*2), 2); } catch (e) {}
+      setTimeout(loop, 3200); };
+    loop();
+  }
+}
+function playMotion(name) {
+  if (name === "dance") return danceMode(25);
+  if (!model) return;
+  try { model.motion(name === "heart" ? "Tap" : "Idle", Math.floor(Math.random()*2), 2); } catch (e) {}
+}
+// 榜一 + 养成初始值：轻量轮询（5s）
+setInterval(async () => {
+  try {
+    const gs = await (await fetch("/api/growth")).json();
+    if (gs.weight) handleGrowth(gs);
+    if (gs.top && gs.top.length) {
+      $("#champion").innerHTML = "👑 榜一 " + gs.top.slice(0, 3).map((t, i) =>
+        `<b>${["🥇", "🥈", "🥉"][i]} ${esc(t.nickname)}</b> ${t.diamonds}`).join("<br>");
+    }
+  } catch (e) {}
+}, 5000);
+
+// ---------------- BGM 点歌台（说话自动压音） ----------------
+let bgm = null, bgmBaseVol = 0.55;
+function handleMusic(v) {
+  if (v.action === "play" && v.path) {
+    if (!bgm) { bgm = new Audio(); bgm.volume = bgmBaseVol; bgm.onended = () => fetch("/api/music/ended", {method:"POST"}); }
+    bgm.src = v.path;
+    bgm.play().catch(() => {});
+  } else if (v.action === "skip" && bgm) {
+    bgm.onended = null;
+    bgm.pause();
+    fetch("/api/music/ended", {method:"POST"});
+    bgm.onended = () => fetch("/api/music/ended", {method:"POST"});
+  }
+}
+function duckBGM(speaking) {
+  if (!bgm) return;
+  bgm.volume = speaking ? 0.12 : bgmBaseVol;   // 压到 12%，说完恢复
+}
+function playMotion(name) {
+  if (!model) return;
+  try { model.motion(name === "dance" ? "Tap" : "Idle", Math.floor(Math.random()*2), 2); } catch (e) {}
+}
+
+function tick(text, highlight) {
+  const el = document.createElement("div");
+  el.className = "tick" + (highlight ? " gift" : "");
+  el.innerHTML = text;
+  $("#ticker").appendChild(el);
+  while ($("#ticker").children.length > 5) $("#ticker").firstChild.remove();
+  setTimeout(() => el.remove(), 12000);
+}
+
+if (GALLERY) document.body.classList.add("gallery");
+initAvatar();
+</script>
+</body>
+</html>

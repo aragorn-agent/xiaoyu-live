@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>雷霆小肥鱼 · 直播舞台</title>
+<style>
+  :root { --text:#dce6f5; --dim:#7d8aa5; --accent:#5eead4; --hue:190; }
+  * { margin:0; box-sizing:border-box; }
+  html,body { height:100%; overflow:hidden; font:"Microsoft YaHei",system-ui,sans-serif; color:var(--text); background:#04080f; }
+  #stage { position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%);
+           height:min(100vh, calc(100vw * 16 / 9)); aspect-ratio:9 / 16; overflow:hidden;
+           background:linear-gradient(180deg,#3a2e2a 0%,#5a4638 22%,#c9a06e 46%,#e8d5b5 60%,#e2c990 100%);
+           transition: background 1.2s ease; }
+  #scene { position:absolute; inset:0;
+      background:radial-gradient(120% 50% at 50% 30%, rgba(255,240,214,.35), transparent 60%),
+      linear-gradient(180deg, rgba(62,48,38,.0) 40%, rgba(120,86,48,.25) 100%); z-index:1; }
+  body.layout-landscape #stage { height:100vh; aspect-ratio:auto; left:0; transform:none; width:100vw; }
+  #topbar { position:absolute; top:1.6%; right:3%; text-align:right; z-index:8; }
+  #clock { font:600 17px Consolas, monospace; letter-spacing:1px; text-shadow:0 1px 4px rgba(0,0,0,.6); }
+  #rec { font-size:10px; color:#ff6b6b; letter-spacing:3px; animation:breath 2.4s ease-in-out infinite; }
+  @keyframes breath { 0%,100%{opacity:.35} 50%{opacity:1} }
+  #nameplate { position:absolute; left:50%; transform:translateX(-50%); top:1.4%; z-index:9; text-align:center;
+               background:linear-gradient(90deg, rgba(30,60,120,.92), rgba(30,90,160,.92));
+               border:2px solid #ffd97a; border-radius:20px; padding:6px 26px; box-shadow:0 4px 18px rgba(0,0,0,.5); }
+  #nameplate .nm { font-size:16px; font-weight:800; letter-spacing:3px; color:#fff; text-shadow:0 0 10px rgba(94,234,212,.8); }
+  #nameplate .badge2 { display:inline-block; background:#ff5c8a; color:#fff; font-size:11px; padding:1px 10px; border-radius:10px; margin:0 3px; font-weight:700; }
+  #nameplate .sub { font-size:10px; color:#ffe9a8; letter-spacing:1px; margin-top:1px; }
+  #endurance { position:absolute; left:2%; top:13.5%; z-index:7; background:rgba(10,18,30,.88); border:1px solid rgba(94,234,212,.3);
+               border-radius:10px; padding:6px 10px; font-size:11px; width:150px; }
+  #endurance .t { color:var(--accent); font-weight:700; font-size:12px; }
+  #endurance .r { color:var(--dim); font-size:10px; }
+  #endurance b { color:#ffe9a8; }
+  #playMenu { position:absolute; left:2%; top:30%; z-index:7; background:rgba(10,18,30,.85);
+              border:1px solid hsla(var(--hue),60%,60%,.25); border-radius:12px; padding:8px 10px; width:172px; }
+  #playMenu h3 { font-size:12px; color:var(--accent); margin-bottom:6px; text-align:center; letter-spacing:2px; }
+  #playMenu .it { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
+  #playMenu .it span:last-child { color:var(--dim); }
+  #avatarSlot { position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+                width:100%; height:78%; z-index:4; }
+  #avatarSlot canvas { width:100%; height:100%; }
+  #avatarSlot video { display:none; }
+  #bossPanel { position:absolute; top:18%; left:6%; right:6%; z-index:8; display:none;
+               background:rgba(10,18,30,.9); border:2px solid #ff5c5c; border-radius:12px; padding:8px 14px; }
+  #bossPanel .row { display:flex; align-items:center; gap:8px; }
+  #bossPanel .nm { color:#ff9a9a; font-weight:700; font-size:13px; }
+  #bossPanel .bar { flex:1; height:12px; background:#1a0e0e; border:1px solid #5c2a2a; border-radius:6px; overflow:hidden; }
+  #bossPanel .bar i { display:block; height:100%; width:100%; background:linear-gradient(90deg,#ff5c5c,#ffb35c); transition:width .3s; }
+  #bossPanel .hp { font-variant-numeric:tabular-nums; font-size:12px; color:#ffb0b0; }
+  #bossPanel .wave { position:absolute; right:12px; top:-26px; color:#ffd97a; font-size:15px; font-weight:800;
+                     text-shadow:0 0 12px rgba(255,217,122,.6); }
+  #bossPanel .skills { display:flex; gap:6px; margin-top:5px; }
+  #bossPanel .skills span { flex:1; text-align:center; background:#22131a; border:1px solid #5c2a2a; border-radius:6px;
+                            font-size:10px; padding:3px; color:#dcb; }
+  #giftBanner { position:absolute; top:11.5%; left:50%; transform:translateX(-50%); width:88%; z-index:6;
+                background:linear-gradient(90deg, rgba(88,28,90,.92), rgba(40,60,110,.92));
+                border:1.5px solid #ffd97a; border-radius:14px; padding:7px 12px; }
+  #giftBanner h3 { font-size:12px; color:#ffe9a8; margin-bottom:4px; }
+  #giftBanner h3::before { content:"❚ "; color:var(--accent); }
+  #giftBanner h3 span { float:right; font-weight:400; font-size:10px; color:var(--dim); }
+  #giftBanner .map { display:flex; flex-wrap:wrap; gap:3px 10px; }
+  #giftBanner .map span { font-size:11px; }
+  #giftBanner .map b { color:#ffd97a; }
+  #giftBanner .map i { color:#7dd3fc; font-style:normal; margin-left:2px; }
+  #legend { position:absolute; right:2%; top:38%; z-index:6; background:rgba(10,18,30,.85);
+            border:1px solid rgba(255,217,122,.3); border-radius:10px; padding:6px 10px; width:150px; }
+  #legend h3 { font-size:11px; color:#ffd97a; text-align:center; margin-bottom:3px; }
+  #legend .it { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; color:var(--text); }
+  #legend .it span:last-child { color:var(--accent); }
+  #blackboard { position:absolute; left:50%; transform:translateX(-50%); bottom:1.5%; z-index:8;
+                background:rgba(12,20,12,.92); border:2px solid #8b7355; border-radius:8px;
+                padding:7px 22px; font-size:15px; white-space:nowrap; }
+  #blackboard b { color:#ffd97a; font-size:17px; }
+  #feedProgress { position:absolute; right:2%; bottom:30%; z-index:6; width:150px; text-align:center;
+                  background:rgba(10,18,30,.8); border-radius:8px; padding:5px 8px; font-size:11px; }
+  #feedProgress .bar { height:8px; background:#0e1730; border-radius:4px; margin-top:4px; overflow:hidden; }
+  #feedProgress .bar i { display:block; height:100%; width:20%; background:linear-gradient(90deg,#fbbf24,#f97316); transition:width .5s; }
+  #bigReply { position:absolute; left:50%; top:20%; transform:translateX(-50%); max-width:80%; z-index:9;
+              background:#fff; color:#1a2a3a; border-radius:6px; padding:12px 22px; font-size:21px; font-weight:600;
+              line-height:1.45; text-align:center; display:none; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  #bigReply::after { content:""; position:absolute; bottom:-14px; left:50%; transform:translateX(-50%);
+                     border:9px solid transparent; border-top-color:#fff; }
+  #bigReply .who { color:#ff5c8a; font-size:14px; }
+  #subtitle { position:absolute; left:50%; bottom:5.5%; transform:translateX(-50%); max-width:84%;
+    background:rgba(7,16,31,.78); border:1.5px solid hsla(var(--hue),70%,60%,.35); border-radius:10px;
+    padding:9px 20px; font-size:17px; line-height:1.5; text-align:center; backdrop-filter:blur(6px);
+    box-shadow:0 8px 40px rgba(0,0,0,.45); z-index:7; }
+  #subtitle .hl { color:var(--accent); }
+  #subtitle:empty { opacity:0; }
+  #welcome { position:absolute; left:50%; top:21%; transform:translateX(-50%); z-index:9; display:none;
+             background:#fff0f5; color:#a02050; border-radius:8px; padding:10px 20px; font-size:16px; font-weight:600;
+             box-shadow:0 6px 24px rgba(0,0,0,.4); }
+  #ticker { position:absolute; left:3%; bottom:16%; width:64%; display:flex; flex-direction:column;
+            align-items:flex-start; gap:5px; z-index:6; }
+  .tick { background:rgba(17,26,44,.88); border:1px solid hsla(var(--hue),60%,60%,.18); border-radius:10px;
+          padding:4px 10px; font-size:12px; animation:pop .25s ease; max-width:100%; }
+  .tick.gift { border-color:rgba(251,191,36,.5); color:#fde68a; }
+  @keyframes pop { from{transform:translateY(8px);opacity:0} to{transform:none;opacity:1} }
+  #loadmsg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+             color:var(--dim); font-size:14px; z-index:2; }
+  body.gallery #topbar, body.gallery #growthBar, body.gallery #champion, body.gallery #subtitle,
+  body.gallery #ticker, body.gallery #tips, body.gallery #nameplate, body.gallery .bubble,
+  body.gallery #giftBanner, body.gallery #legend, body.gallery #playMenu, body.gallery #blackboard,
+  body.gallery #endurance, body.gallery #feedProgress, body.gallery #bossPanel { display:none !important; }
+  body.gallery #avatarSlot { width:100%; height:100%; bottom:0; }
+  #growthBar { position:absolute; left:2.5%; top:2.4%; z-index:7; background:rgba(10,18,30,.85);
+               border:1px solid hsla(var(--hue),60%,60%,.25); border-radius:10px; padding:5px 10px; font-size:11px; }
+  #growthBar .bar { width:130px; height:5px; background:#0e1730; border-radius:3px; margin-top:4px; overflow:hidden; }
+  #growthBar .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),#7dd3fc); transition:width .6s; }
+  #champion { position:absolute; right:2%; top:13.5%; z-index:6; font-size:11px; color:var(--dim); line-height:1.7;
+              background:rgba(10,18,30,.8); border-radius:8px; padding:5px 10px; }
+  #champion b { color:#fde68a; }
+  #levelup { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+             z-index:8; pointer-events:none; background:radial-gradient(circle, rgba(251,191,36,.28), transparent 65%); }
+  #levelup .txt { font-size:40px; font-weight:700; color:#fde68a; text-shadow:0 0 30px rgba(251,191,36,.8);
+                  animation:pop .5s ease; text-align:center; }
+  #stage.disco { animation:disco .5s linear infinite; }
+  @keyframes disco { 0%{filter:hue-rotate(0deg) saturate(1.4)} 25%{filter:hue-rotate(90deg) saturate(1.6)}
+                     50%{filter:hue-rotate(180deg) saturate(1.4)} 75%{filter:hue-rotate(270deg) saturate(1.6)}
+                     100%{filter:hue-rotate(360deg) saturate(1.4)} }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="scene"></div>
+  <div id="loadmsg">正在加载雷霆小肥鱼…</div>
+  <div id="nameplate"><span class="badge2">AI 虚拟主播·非真人</span><span class="badge2">新人主播</span>
+    <div class="nm">雷霆小肥鱼</div><div class="sub">求关注 · 求点赞 · 求陪伴 ♥</div></div>
+  <div id="topbar"><div id="clock">--:--:--</div><div id="rec">● LIVE</div></div>
+  <div id="endurance"></div>
+  <div id="playMenu"><h3>所有玩法</h3><div id="playMenuItems"></div></div>
+  <div id="giftBanner"><h3>心意小玩法<span>送我就回应</span></h3><div class="map" id="giftMap"></div></div>
+  <div id="legend"><h3>守饭礼物</h3><div class="it"><span>🏠 人气票</span><span>无限能量</span></div>
+    <div class="it"><span>🌹 玫瑰</span><span>快速回血</span></div>
+    <div class="it"><span>🍺 大啤酒</span><span>2倍速</span></div>
+    <div class="it"><span>🎵 抖音</span><span>怪物潮</span></div>
+    <div class="it"><span>🔥 666</span><span>精英来袭</span></div></div>
+  <div id="bossPanel"><div class="wave" id="bossWave">第 1 波</div>
+    <div class="row"><span class="nm" id="bossNm">Boss</span><div class="bar"><i id="bossHpBar"></i></div><span class="hp" id="bossHp">0/0</span></div>
+    <div class="skills"><span>⚔ 攻击</span><span>💥 蓄力</span><span>💊 治疗</span></div></div>
+  <div id="avatarSlot"></div>
+  <div id="welcome"></div>
+  <div id="bigReply"></div>
+  <div id="growthBar">🐠 <span id="gLevel">鱼苗</span> · <span id="gWeight">180g</span>
+    <div class="bar"><i id="gBar" style="width:5%"></i></div></div>
+  <div id="champion"></div>
+  <div id="feedProgress">🍚 加饭 <span id="fpNow">0</span> / <span id="fpMax">2000</span> 碗
+    <div class="bar"><i id="fpBar"></i></div></div>
+  <div id="blackboard">恰饭小黑板：今天吃了主人 <b id="bbBowls">0</b> 碗米饭</div>
+  <div id="tips">
+    <span class="tip">💬 弹幕聊天 · 带<b>小鱼</b>优先回</span>
+    <span class="tip">🎵 <b>点歌 歌名</b> · <b>猜歌</b> 盲盒</span>
+    <span class="tip">🐟 礼物投喂<b>长大进化</b></span>
+    <span class="tip">⚔ <b>开Boss</b> 全服讨伐 · <b>跳舞</b></span>
+    <span class="tip">🎮 <b>接龙</b> · <b>猜数字</b></span>
+  </div>
+  <div id="levelup"><div class="txt" id="levelupTxt"></div></div>
+  <div id="subtitle"></div>
+  <div id="ticker"></div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[<>&]/g, c => ({"<":"&lt;","&gt":"&gt;","&":"&amp;"}[c]||c));
+const GALLERY = new URLSearchParams(location.search).get("gallery") === "1";
+if (GALLERY) document.body.classList.add("gallery");
+$("#playMenuItems").innerHTML = [
+  ["⚔ 开Boss", "全服讨伐"], ["🎵 猜歌", "盲盒抢答"], ["🎶 点歌 歌名", "点歌台"],
+  ["🎮 接龙", "成语接龙"], ["🎲 猜数字", "互动"], ["💃 跳舞", "现场舞蹈"],
+  ["🐟 投喂", "养成进化"], ["🧧 彩蛋", "试试摸摸鱼头"],
+].map(x => `<div class="it"><span>${x[0]}</span><span>${x[1]}</span></div>`).join("");
+$("#giftMap").innerHTML = [
+  ["🌹 玫瑰", "爱心暴击"], ["🍺 大啤酒", "2倍速"], ["🏠 人气票", "能量+∞"],
+  ["🚗 跑车", "排面拉满"], ["🔥 嘉年华", "全屏进化"],
+].map(x => `<span><b>${x[0]}</b><i>${x[1]}</i></span>`).join("");
+
+// ── WebGL 品红抠像视频播放器（双纹理交叉淡化，idle=鲸鱼尾巴无缝循环）──
+let model = null;
+let currentSpeech = 0, speechCounter = 0;
+let audioCtx = null, analyser = null, srcNode = null;
+let baseY = 0;
+const AVATAR_VS = "attribute vec2 p; varying vec2 uv; void main(){ uv = vec2(p.x*.5+.5, .5-p.y*.5); gl_Position = vec4(p,0,1); }";
+const AVATAR_FS = `
+precision mediump float;
+varying vec2 uv;
+uniform sampler2D texA; uniform sampler2D texAa;
+uniform sampler2D texB; uniform sampler2D texBa;
+uniform float fade;
+uniform vec3 mag;               // 品红底色（Live2D 导出合成底）
+vec4 uncomposite(vec4 c, float a) {
+  // 逆合成：observed = fin*a + mag*(1-a) → fin = (observed - mag*(1-a)) / a
+  vec3 fin = (c.rgb - mag * (1.0 - a)) / max(a, 0.02);
+  return vec4(clamp(fin, 0.0, 1.0), a);
+}
+void main(){
+  vec4 ca = texture2D(texA, uv);
+  float aa = clamp((texture2D(texAa, uv).r - 0.0627) / 0.8745, 0.0, 1.0);  // h264 限位展开
+  vec4 cb = texture2D(texB, uv);
+  float ab = clamp((texture2D(texBa, uv).r - 0.0627) / 0.8745, 0.0, 1.0);
+  vec4 A = uncomposite(ca, aa);
+  vec4 B = uncomposite(cb, ab);
+  vec4 outc = mix(A, B, fade);
+  gl_FragColor = vec4(outc.rgb * outc.a, outc.a);
+}`;
+let gl = null, glProg = null, texA = null, texAa = null, texB = null, texBa = null;
+let vidA = null, vidAa = null, vidB = null, vidBa = null;
+const motionMap = {
+  idle: { color: "/avatar/idle_leiteng_rgb.mp4", alpha: "/avatar/idle_leiteng_a.mp4", loop: true },
+  talk: { color: "/motions/talk_v4.webm", loop: true },
+  talk_b: { color: "/motions/talk_v4b.webm", loop: true },
+  welcome: { color: "/motions/ciallo_v4.webm" },
+  gift: { color: "/motions/motion_full_wave.webm" },
+  celebration: { color: "/motions/motion_celebration.webm" },
+  sleepy: { color: "/motions/motion_sleepy.webm" },
+  food: { color: "/motions/motion_food.webm" },
+  settle: { color: "/motions/motion_settle_wave.webm" },
+};
+let avatarFade = 1, avatarCurrent = "idle";
+
+async function initAvatar() {
+  const slot = $("#avatarSlot");
+  const canvas = document.createElement("canvas");
+  canvas.style.width = "100%"; canvas.style.height = "100%";
+  slot.appendChild(canvas);
+  canvas.width = slot.clientWidth; canvas.height = slot.clientHeight;
+  gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: false });
+  function sh(type, code) { const s = gl.createShader(type); gl.shaderSource(s, code); gl.compileShader(s); return s; }
+  glProg = gl.createProgram();
+  gl.attachShader(glProg, sh(gl.VERTEX_SHADER, AVATAR_VS));
+  gl.attachShader(glProg, sh(gl.FRAGMENT_SHADER, AVATAR_FS));
+  gl.linkProgram(glProg);
+  gl.useProgram(glProg);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pLoc = gl.getAttribLocation(glProg, "p");
+  gl.enableVertexAttribArray(pLoc);
+  gl.vertexAttribPointer(pLoc, 2, gl.FLOAT, false, 0, 0);
+  gl.uniform1i(gl.getUniformLocation(glProg, "texA"), 0);
+  gl.uniform1i(gl.getUniformLocation(glProg, "texAa"), 1);
+  gl.uniform1i(gl.getUniformLocation(glProg, "texB"), 2);
+  gl.uniform1i(gl.getUniformLocation(glProg, "texBa"), 3);
+  gl.uniform3f(gl.getUniformLocation(glProg, "mag"), 0.824, 0.118, 0.686);   // 实测品红底 [210,30,175]/255
+  texA = gl.createTexture(); texAa = gl.createTexture();
+  texB = gl.createTexture(); texBa = gl.createTexture();
+  for (const t of [texA, texAa, texB, texBa]) {
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                  new Uint8Array([0, 0, 0, 0]));   // 初始 1px 透明
+  }
+  vidA = document.createElement("video"); vidAa = document.createElement("video");
+  vidB = document.createElement("video"); vidBa = document.createElement("video");
+  for (const v of [vidA, vidAa, vidB, vidBa]) { v.crossOrigin = "anonymous"; v.muted = true; v.playsInline = true; v.loop = true; slot.appendChild(v); }
+  await setMotion("idle", true);
+  renderLoop();
+  const lm = $("#loadmsg"); if (lm) lm.remove();
+}
+function texFromVideo(tex, video) {
+  if (!video || video.readyState < 2 || !video.src) return;   // 空元素跳过（防 InvalidStateError 杀渲染链）
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+}
+function renderLoop() {
+  if (!gl) return;
+  if (vidA && vidA.readyState >= 2) texFromVideo(texA, vidA);
+  if (vidAa && vidAa.readyState >= 2) texFromVideo(texAa, vidAa);
+  if (vidB && vidB.readyState >= 2) texFromVideo(texB, vidB);
+  if (vidBa && vidBa.readyState >= 2) texFromVideo(texBa, vidBa);
+  avatarFade = Math.min(1, avatarFade + 0.08);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  gl.uniform1f(gl.getUniformLocation(glProg, "fade"), avatarFade);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texA);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texAa);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, texB);
+  gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, texBa);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(renderLoop);
+}
+function setMotion(name, force) {
+  if (!gl) return;
+  const B = motionMap[name] || motionMap.idle;
+  if (name === avatarCurrent && !force) return;
+  [vidA, vidAa, vidB, vidBa].forEach(v => { if (v) v.pause(); });
+  let tvA = vidA, tTexA = texA, tvAa = vidAa, tTexAa = texAa;
+  vidA = vidB; texA = texB; vidAa = vidBa; texAa = texBa;
+  vidB = tvA; texB = tTexA; vidBa = tvAa; texB = tTexAa;
+  vidB.src = B.color; vidB.loop = !!B.loop;
+  if (B.alpha) { vidBa.src = B.alpha; vidBa.loop = !!B.loop; vidBa.play().catch(()=>{}); }
+  vidB.play().catch(() => {});
+  if (vidA.src && vidA.readyState >= 2) { vidA.play().catch(()=>{}); if (vidAa.src) vidAa.play().catch(()=>{}); }
+  avatarFade = 0;
+  avatarCurrent = name;
+}
+let talkEndTimer = null;
+function avatarSpeak(on) {
+  if (on) { clearTimeout(talkEndTimer); setMotion("talk", false); }
+  else { talkEndTimer = setTimeout(() => setMotion("idle", false), 300); }
+}
+function setEmotion(emotion) { /* 情绪经 voice.seg 的 emotion 驱动动作 */ }
+function playMotion(name) {
+  if (name === "dance") return danceMode(25);
+  const m = { heart: "gift", wave: "settle", dance: null }[name] || name;
+  if (m) setMotion(m, false);
+}
+function setMouth(v) {}
+function tickMouth() {}
+
+// ── 字幕 ──
+let subTimer = null;
+function saySubtitle(segments, speech) {
+  clearTimeout(subTimer);
+  const el = $("#subtitle");
+  const t0 = performance.now();
+  segments.__speech = speech;
+  const render = () => {
+    if (currentSpeech !== segments.__speech) return;
+    const now = performance.now() - t0;
+    el.innerHTML = segments.map(seg => `<span class="${now >= seg.start_ms && now < seg.end_ms ? "hl" : ""}">${esc(seg.text)}</span>`).join("");
+    if (now < segments[segments.length-1].end_ms + 1800) subTimer = setTimeout(render, 80);
+    else el.textContent = "";
+  };
+  render();
+}
+function audioTitle(u){ return decodeURIComponent((u||"").split("/").pop() || ""); }
+function playAudio(url, segments) {
+  const speech = ++currentSpeech;
+  const audio = new Audio(url); audio.crossOrigin = "anonymous";
+  avatarSpeak(true);
+  audio.onended = () => { if (speech === currentSpeech) { avatarSpeak(false); } };
+  audio.onerror = () => { if (speech === currentSpeech) avatarSpeak(false); };
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    audio.play().catch(() => {});
+  } catch (e) { audio.play().catch(()=>{}); }
+  saySubtitle(segments && segments.length ? segments : [{text: audioTitle(url), start_ms:0, end_ms: 4000}], speech);
+}
+// ── 流式分段语音链 ──
+let chains = {}, currentChain = null, chainAudio = null;
+function onSegReady(v) {
+  const c = chains[v.client_id] || (chains[v.client_id] = { segs: {}, next: 0 });
+  c.segs[v.seq] = v;
+  if (!v.url) { $("#subtitle").textContent = v.text || ""; c.next++; if (v.client_id === currentChain) playNext(v.client_id); return; }
+  if (v.client_id !== currentChain) { if (chainAudio) chainAudio.pause(); currentChain = v.client_id; playNext(v.client_id); }
+  else if (c.next === v.seq) playNext(v.client_id);
+}
+function playNext(cid) {
+  const c = chains[cid]; if (!c || cid !== currentChain) return;
+  const seg = c.segs[c.next]; if (!seg) return;
+  c.next++; playSeg(cid, seg);
+}
+function playSeg(cid, seg) {
+  speechCounter++;
+  $("#subtitle").textContent = seg.text || "";
+  duckBGM(true); avatarSpeak(true);
+  const audio = new Audio(seg.url); audio.crossOrigin = "anonymous";
+  audio.onended = () => { duckBGM(false); avatarSpeak(false); if (currentChain === cid) playNext(cid); };
+  audio.onerror = () => { duckBGM(false); if (currentChain === cid) playNext(cid); };
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (e) {}
+  audio.play().catch(() => {});
+}
+function duckBGM(speaking) { if (bgm) bgm.volume = speaking ? 0.12 : bgmBaseVol; }
+// ── BGM / 跳舞 / 特效 ──
+let bgm = null, bgmBaseVol = 0.55, danceTimer = null;
+function handleMusic(v) {
+  if (v.action === "play" && v.path) {
+    if (!bgm) { bgm = new Audio(); bgm.volume = bgmBaseVol; bgm.onended = () => fetch("/api/music/ended", {method:"POST"}); }
+    bgm.src = v.path; bgm.play().catch(() => {});
+  } else if (v.action === "skip" && bgm) { bgm.pause(); fetch("/api/music/ended", {method:"POST"}); }
+}
+function danceMode(seconds) {
+  $("#stage").classList.add("disco");
+  clearTimeout(danceTimer);
+  danceTimer = setTimeout(() => $("#stage").classList.remove("disco"), (seconds||25)*1000);
+  setMotion("food", false);
+}
+function playMotion(name) {
+  if (name === "dance") return danceMode(25);
+  const m = { heart: "gift", wave: "settle" }[name] || name;
+  setMotion(m, false);
+}
+function setMoodLight(mood) {
+  const hue = mood >= 60 ? 174 + (mood-60)*0.4 : 260 + mood*0.5;
+  document.documentElement.style.setProperty("--hue", Math.round(hue % 360));
+}
+function levelupEffect(level) {
+  $("#levelupTxt").textContent = `🎉 进化 · ${level} 🎉`;
+  $("#levelup").style.display = "flex";
+  setTimeout(() => $("#levelup").style.display = "none", 3200);
+}
+function handleGrowth(v) {
+  $("#gLevel").textContent = v.level || "";
+  $("#gWeight").textContent = (v.weight || 0) + "g";
+  if (v.next_at) { const base = {"鱼苗":0,"小肥鱼":500,"大肥鱼":1500,"雷霆大肥鱼":3500,"传说之鱼":8000}[v.level] || 0;
+    $("#gBar").style.width = Math.min(100, (v.weight - base) / (v.next_at - base) * 100) + "%"; }
+  else $("#gBar").style.width = "100%";
+}
+setInterval(() => { const d = new Date();
+  $("#clock").textContent = d.toLocaleTimeString("zh-CN", {hour12:false}) + "." + String(d.getMilliseconds()).padStart(3,"0");
+}, 200);
+// ── 事件流 ──
+const es = new EventSource("/api/events");
+es.onmessage = m => { try { handle(JSON.parse(m.data)); } catch(e) {} };
+function handle(d) {
+  const v = d.data || {};
+  if (d.topic === "live.event") {
+    if (v.type === "comment") tick(`${esc(v.nickname)}：${esc(v.content)}`);
+    else if (v.type === "member") { tick(`${esc(v.nickname)} 来了 ✦`); showWelcome(v.nickname); }
+    else if (v.type === "gift") tick(`${esc(v.nickname)} 送 ${esc(v.gift_name)}×${v.gift_num}`, true);
+    else if (v.type === "follow") tick(`${esc(v.nickname)} 关注了主播`, true);
+  }
+  if (d.topic === "brain.reply") {
+    if (v.kind === "chat" || v.kind === "welcome") showBigReply(v.viewer, v.text);
+    else if (!$("#subtitle").textContent) $("#subtitle").textContent = v.text || "";
+  }
+  if (d.topic === "voice.ready" && v.url) playAudio(v.url, v.segments);
+  if (d.topic === "voice.seg_ready") onSegReady(v);
+  if (d.topic === "voice.speaking") duckBGM(v.speaking);
+  if (d.topic === "brain.mood") setMoodLight(v.mood);
+  if (d.topic === "stage.command") {
+    if (v.action === "motion") playMotion(v.motion);
+    if (v.action === "effect" && v.effect === "levelup") levelupEffect(v.level || "");
+    if (v.action === "boss") handleBoss(v);
+  }
+  if (d.topic === "show.music") handleMusic(v);
+  if (d.topic === "growth.update") handleGrowth(v);
+}
+function handleBoss(v) {
+  const p = $("#bossPanel");
+  if (v.effect === "open") { $("#bossNm").textContent = v.boss || "Boss"; $("#bossHp").textContent = `${v.hp}/${v.max_hp}`;
+    $("#bossHpBar").style.width = "100%"; $("#bossWave").textContent = "第 1 波"; p.style.display = "block"; }
+  else if (v.effect === "hp") { $("#bossHp").textContent = `${Math.max(0,v.hp)}/${v.max_hp}`;
+    $("#bossHpBar").style.width = Math.max(0, v.hp / v.max_hp * 100) + "%";
+    $("#bossWave").textContent = `第 ${v.round || 1} 波`; }
+  else if (v.effect === "settle") { p.style.display = "none"; if (v.win) levelupEffect("Boss 击败"); }
+}
+let welcomeTimer = null, bigReplyTimer = null;
+function showWelcome(nick) {
+  const el = $("#welcome"); el.textContent = `欢迎 ${nick} 来到直播间～`;
+  el.style.display = "block"; clearTimeout(welcomeTimer);
+  welcomeTimer = setTimeout(() => el.style.display = "none", 3500);
+}
+function showBigReply(who, text) {
+  const el = $("#bigReply");
+  el.innerHTML = (who ? `<span class="who">回复 @${esc(who)}</span><br>` : "") + esc(text || "");
+  el.style.display = "block"; clearTimeout(bigReplyTimer);
+  bigReplyTimer = setTimeout(() => el.style.display = "none", 6000);
+}
+function tick(text, highlight) {
+  const el = document.createElement("div");
+  el.className = "tick" + (highlight ? " gift" : "");
+  el.innerHTML = text;
+  $("#ticker").appendChild(el);
+  while ($("#ticker").children.length > 5) $("#ticker").firstChild.remove();
+  setTimeout(() => el.remove(), 12000);
+}
+// ── 轮询：养成/榜一/黑板/续航 ──
+setInterval(async () => {
+  try {
+    const g = await (await fetch("/api/growth")).json();
+    if (g.weight) handleGrowth(g);
+    if (g.top && g.top.length) $("#champion").innerHTML = "👑 榜一 " + g.top.slice(0,3).map((t,i) =>
+      `<b>${["🥇","🥈","🥉"][i]} ${esc(t.nickname)}</b> ${t.diamonds}`).join("<br>");
+    const bb = await (await fetch("/api/blackboard")).json();
+    $("#bbBowls").textContent = bb.bowls;
+    $("#fpNow").textContent = bb.bowls;
+    $("#fpMax").textContent = bb.target;
+    $("#fpBar").style.width = Math.min(100, bb.progress) + "%";
+    $("#endurance").innerHTML = `<div class="t">⚡ AI 续航</div><div class="r">已耗 <b>${bb.ai_spent_yuan}</b> 元 / 预算 ${bb.ai_budget_yuan} 元</div><div class="r">tokens ${bb.ai_tokens}</div>`;
+  } catch (e) {}
+}, 5000);
+window.addEventListener("load", () => { initAvatar(); });
+</script>
+</body>
+</html>

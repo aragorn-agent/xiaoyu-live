@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>小肥鱼直播间 · 工作台</title>
+<link rel="stylesheet" href="/static/vendor/tabler.min.css">
+<style>
+  body { background:#f6f8fb; }
+  .metric { font-size:1.4rem; font-weight:700; }
+  .log-line { font:12px/1.6 Consolas, monospace; white-space:pre-wrap; word-break:break-all; }
+  .nav-link { cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <h1 class="navbar-brand mb-0">🐠 小肥鱼直播间</h1>
+      <div class="navbar-nav flex-row order-md-last align-items-center">
+        <span class="badge bg-success me-2" id="sseDot">实时</span>
+        <a href="/" target="_blank" class="btn btn-sm btn-outline-primary me-1">舞台 ↗</a>
+        <a href="/models" target="_blank" class="btn btn-sm btn-outline-primary">形象 ↗</a>
+      </div>
+    </div>
+  </header>
+  <div class="page-wrapper">
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="row g-3">
+          <div class="col-lg-2">
+            <div class="card"><div class="card-body p-2">
+              <nav id="nav" class="nav nav-pills flex-column gap-1">
+                <a class="nav-link active" data-tab="overview">📊 总览</a>
+                <a class="nav-link" data-tab="brain">🧠 大脑</a>
+                <a class="nav-link" data-tab="voice">🎙️ 语音</a>
+                <a class="nav-link" data-tab="danmaku">💬 弹幕</a>
+                <a class="nav-link" data-tab="life">🐟 小鱼的生活</a>
+                <a class="nav-link" data-tab="billing">💰 账单</a>
+                <a class="nav-link" data-tab="logs">📜 日志</a>
+              </nav>
+            </div></div>
+          </div>
+          <div class="col-lg-10">
+            <div class="tab-pane" id="tab-overview">
+              <div class="row g-3">
+                <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="subheader">抖币收入</div><div class="metric" id="mIncome">0</div></div></div></div>
+                <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="subheader">观众</div><div class="metric" id="mViewers">0</div></div></div></div>
+                <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="subheader">心情</div><div class="metric" id="mMood">--</div></div></div></div>
+                <div class="col-6 col-md-3"><div class="card"><div class="card-body"><div class="subheader">回复数</div><div class="metric" id="mReplies">0</div></div></div></div>
+              </div>
+              <div class="row g-3 mt-1">
+                <div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">模块开关（选配中心）</h3></div><div class="card-body p-2" id="modList"></div></div></div>
+                <div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">实时事件流</h3></div><div class="card-body log-line" id="feed" style="max-height:320px;overflow-y:auto"></div></div></div>
+              </div>
+            </div>
+            <div class="tab-pane d-none" id="tab-brain">
+              <div class="card mb-3"><div class="card-header"><h3 class="card-title">记忆与状态</h3></div><div class="card-body"><pre class="log-line" id="brainInfo">--</pre></div></div>
+              <div class="card"><div class="card-header"><h3 class="card-title">小鱼的生活 · 喂料</h3></div>
+                <div class="card-body">
+                  <input class="form-control mb-2" id="lifeTitle" placeholder="标题（刚刷到的新闻/视频/段子）">
+                  <textarea class="form-control mb-2" id="lifeContent" rows="3" placeholder="正文/简介/高赞评论——小鱼会变成自己的记忆和观点"></textarea>
+                  <button class="btn btn-primary me-2" id="lifeFeedBtn">喂给她（~30s）</button>
+                  <button class="btn btn-outline-secondary" id="lifeCompressBtn">压缩成人格画像</button>
+                </div></div>
+            </div>
+            <div class="tab-pane d-none" id="tab-voice">
+              <div class="card mb-3"><div class="card-header"><h3 class="card-title">语音引擎状态</h3></div><div class="card-body"><pre class="log-line" id="voiceInfo">--</pre></div></div>
+              <div class="card"><div class="card-header"><h3 class="card-title">TTS 试听（走完整链路）</h3></div>
+                <div class="card-body">
+                  <input class="form-control mb-2" id="ttsText" value="哈喽，我是换了新声音的小鱼！">
+                  <button class="btn btn-primary" id="ttsSay">让她说这句</button>
+                  <div class="mt-2 text-secondary" id="ttsHistory"></div>
+                </div></div>
+            </div>
+            <div class="tab-pane d-none" id="tab-danmaku">
+              <div class="card"><div class="card-header"><h3 class="card-title">注入测试（mock，真开播前请关闭 ingress_mock）</h3></div>
+                <div class="card-body">
+                  <div class="row g-2 mb-2">
+                    <div class="col-6"><input class="form-control" id="inNick" placeholder="观众昵称"></div>
+                    <div class="col-6"><input class="form-control" id="inText" placeholder="弹幕内容"></div>
+                  </div>
+                  <div class="btn-group flex-wrap">
+                    <button class="btn btn-outline-primary" data-inj="chat">弹幕</button>
+                    <button class="btn btn-outline-primary" data-inj="member">进房</button>
+                    <button class="btn btn-outline-primary" data-inj="like">点赞×5</button>
+                    <button class="btn btn-outline-primary" data-inj="follow">关注</button>
+                    <button class="btn btn-outline-warning" data-inj="rose">玫瑰</button>
+                    <button class="btn btn-outline-warning" data-inj="car">跑车</button>
+                    <button class="btn btn-outline-secondary" data-inj="dance">喊跳舞</button>
+                    <button class="btn btn-outline-secondary" data-inj="remember">记住我</button>
+                  </div>
+                </div></div>
+            </div>
+            <div class="tab-pane d-none" id="tab-life">
+              <div class="card"><div class="card-header"><h3 class="card-title">生活记忆</h3></div><div class="card-body"><pre class="log-line" id="lifeInfo">--</pre></div></div>
+            </div>
+            <div class="tab-pane d-none" id="tab-billing">
+              <div class="row g-3">
+                <div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">LLM 花费（trace 末页估算）</h3></div><div class="card-body" id="billLlm">--</div></div></div>
+                <div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">收入（抖币）</h3></div><div class="card-body" id="billIncome">--</div></div></div>
+              </div>
+            </div>
+            <div class="tab-pane d-none" id="tab-logs">
+              <div class="card"><div class="card-header"><h3 class="card-title">LLM Trace（密钥已遮蔽）</h3>
+                <div class="card-actions"><select id="traceFilter" class="form-select form-select-sm"><option value="">全部来源</option><option>chat</option><option>story</option><option>life</option></select></div></div>
+                <div class="card-body log-line" id="traceView" style="max-height:480px;overflow-y:auto"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[<>&]/g, c => ({"<":"&lt;","&gt":"&gt;","&":"&amp;"}[c]||c));
+document.querySelectorAll("#nav .nav-link").forEach(a => a.onclick = () => {
+  document.querySelectorAll("#nav .nav-link").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".tab-pane").forEach(x => x.classList.add("d-none"));
+  a.classList.add("active");
+  $("#tab-" + a.dataset.tab).classList.remove("d-none");
+  refresh();
+});
+const es = new EventSource("/api/events");
+es.onopen = () => $("#sseDot").className = "badge bg-success me-2";
+es.onerror = () => $("#sseDot").className = "badge bg-danger me-2";
+es.onmessage = m => { try { const d = JSON.parse(m.data);
+  if (["live.event","brain.reply","voice.seg_ready","voice.ready"].includes(d.topic)) pushFeed(d); } catch(e) {} };
+function pushFeed(d) {
+  const v = d.data || {};
+  let txt = d.topic + " ";
+  if (v.type === "comment") txt += `${v.nickname}：${v.content}`;
+  else if (v.type === "gift") txt += `${v.nickname} 送 ${v.gift_name}×${v.gift_num}`;
+  else if (v.type === "member") txt += `${v.nickname} 来了`;
+  else if (d.topic === "brain.reply") txt += `小鱼：${v.text}`;
+  else if (d.topic === "voice.seg_ready") txt += `🔊 ${v.text}`;
+  else if (d.topic === "voice.ready") txt += `🔊 ${v.text}`;
+  const el = document.createElement("div");
+  el.className = "log-line";
+  el.textContent = new Date().toLocaleTimeString("zh-CN", {hour12:false}) + " " + txt;
+  $("#feed").prepend(el);
+  while ($("#feed").children.length > 120) $("#feed").lastChild.remove();
+}
+async function refresh() {
+  try { var s = await (await fetch("/api/state")).json(); } catch(e) { return; }
+  $("#mIncome").textContent = s.pipeline.income_diamonds;
+  $("#mViewers").textContent = s.pipeline.viewers;
+  $("#mMood").textContent = s.brain.memory.mood + "/100";
+  $("#mReplies").textContent = s.brain.replies;
+  const ml = $("#modList"); ml.innerHTML = "";
+  for (const [name, st] of Object.entries(s.modules)) {
+    ml.insertAdjacentHTML("beforeend", `<div class="d-flex align-items-center justify-content-between py-1 border-bottom">
+      <span>${name}</span><span class="badge bg-${st.state==="running"?"success":st.state==="error"?"danger":"secondary"}">${st.state}</span>
+      <span class="switch" style="cursor:pointer;min-width:44px;text-align:center" data-mod="${name}">${st.enabled?"🟢 ON":"⚫ OFF"}</span></div>`);
+  }
+  ml.querySelectorAll("[data-mod]").forEach(sw => sw.onclick = async () => {
+    const name = sw.dataset.mod, st = s.modules[name];
+    await fetch(`/api/modules/${name}/toggle`, {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({enabled: !st.enabled})});
+    refresh();
+  });
+  if (!$("#tab-brain").classList.contains("d-none"))
+    $("#brainInfo").textContent = JSON.stringify({记忆条数: s.brain.memory.memories, 观众: s.brain.memory.viewers,
+      最近对话: s.brain.memory.recent_chat, 端点: s.brain.llm_endpoints}, null, 1);
+  if (!$("#tab-voice").classList.contains("d-none"))
+    $("#voiceInfo").textContent = JSON.stringify({active: s.voice.router.active, counts: s.voice.router.counts,
+      voices: Object.fromEntries(Object.entries(s.voice.router.voices||{}).map(([k,v])=>[k, {available:v.available, url:v.url||v.voice||""}]))}, null, 1);
+  if (!$("#tab-life").classList.contains("d-none"))
+    fetch("/api/life/status").then(r=>r.json()).then(j => $("#lifeInfo").textContent = JSON.stringify(j, null, 1)).catch(()=>{});
+  if (!$("#tab-billing").classList.contains("d-none")) {
+    let inTok = 0, outTok = 0;
+    for (const t of (s.trace_tail || [])) { inTok += t.tokens?.prompt || 0; outTok += t.tokens?.completion || 0; }
+    $("#billLlm").innerHTML = `trace 末页 tokens：输入 <b>${inTok}</b> / 输出 <b>${outTok}</b><br><span class="text-secondary">完整账单：logs/llm_trace.jsonl（tokens 字段）</span>`;
+    $("#billIncome").innerHTML = `本场抖币 <b>${s.pipeline.income_diamonds}</b><br>观众 <b>${s.pipeline.viewers}</b>`;
+  }
+  if (!$("#tab-logs").classList.contains("d-none")) {
+    const f = $("#traceFilter").value;
+    const rows = (s.trace_tail || []).filter(t => !f || t.source === f);
+    $("#traceView").textContent = rows.map(t =>
+      `[${t.source}] ${t.ok ? "OK " + t.ms + "ms" : "FAIL " + (t.error||"").slice(0,60)}\n  → ${(t.reply || "").slice(0, 120)}`).join("\n\n") || "（空）";
+  }
+}
+$("#traceFilter").onchange = refresh;
+refresh(); setInterval(refresh, 5000);
+$("#ttsSay").onclick = async () => {
+  const r = await (await fetch("/api/say", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({text: $("#ttsText").value})})).json();
+  if (r.ok) $("#ttsHistory").textContent = "已发送，看事件流/舞台确认声音";
+};
+$("#lifeFeedBtn").onclick = async e => {
+  e.target.disabled = true; e.target.textContent = "消化中...";
+  const r = await (await fetch("/api/life/feed", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({title: $("#lifeTitle").value, content: $("#lifeContent").value})})).json();
+  e.target.disabled = false; e.target.textContent = "喂给她（~30s）";
+  alert(r.ok ? "小鱼记住了：" + (r.entry?.summary || "").slice(0, 60) : "失败：" + r.error);
+};
+$("#lifeCompressBtn").onclick = async e => {
+  e.target.disabled = true;
+  const r = await (await fetch("/api/life/compress", {method:"POST"})).json();
+  e.target.disabled = false;
+  alert(r.ok ? "画像已更新，覆盖 " + (r.covered ?? 0) + " 条" : "失败：" + JSON.stringify(r).slice(0,80));
+};
+document.querySelectorAll("[data-inj]").forEach(b => b.onclick = async () => {
+  const nick = $("#inNick").value.trim() || "观众";
+  const a = b.dataset.inj;
+  const payload = {msg_id: "ui-" + Date.now() + "-" + Math.random().toString(36).slice(2,6)};
+  if (a === "chat")    Object.assign(payload, {msg_type:2, nickname:nick, sec_open_id:"u_"+nick, content:$("#inText").value});
+  if (a === "member")  Object.assign(payload, {msg_type:6, nickname:nick, sec_open_id:"u_"+nick});
+  if (a === "like")    Object.assign(payload, {msg_type:1, nickname:nick, sec_open_id:"u_"+nick, like_num:5});
+  if (a === "follow")  Object.assign(payload, {msg_type:5, nickname:nick, sec_open_id:"u_"+nick, user_follow_action:1});
+  if (a === "rose")    Object.assign(payload, {msg_type:3, nickname:nick, sec_open_id:"u_"+nick, gift_name_plain:"玫瑰", gift_num:1});
+  if (a === "car")     Object.assign(payload, {msg_type:3, nickname:nick, sec_open_id:"u_"+nick, gift_name_plain:"跑车", gift_num:1});
+  if (a === "dance")   Object.assign(payload, {msg_type:2, nickname:nick, sec_open_id:"u_"+nick, content:"跳舞！"});
+  if (a === "remember")Object.assign(payload, {msg_type:2, nickname:nick, sec_open_id:"u_"+nick, content:"记住我是常熬夜的程序员"});
+  await fetch("/api/inject", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+});
+</script>
+</body>
+</html>

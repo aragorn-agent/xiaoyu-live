@@ -1,0 +1,167 @@
+# 小肥鱼直播间 · 主配置
+# 本机覆盖：复制需要改的键到 config/local.yaml（git 忽略，热加载 2 秒生效）
+# 密钥一律走环境变量（DEEPSEEK_API_KEY / AIMYRIA_KEY 等），配置里绝不落密钥。
+
+app:
+  host: "127.0.0.1"
+  port: 8188              # 舞台页 / 控制台 / API 同端口
+  data_dir: "data"
+  debug: true
+
+# ══════════ 模块选配中心 ══════════
+# enabled=false 的模块不启动；中控台可随时热切换
+modules:
+  ingress_mock:     {enabled: true}    # mock 弹幕源（开发/验收用）
+  ingress_http:     {enabled: true}    # HTTP relay 入口（兼容第三方抓取工具）
+  ingress_cdp:      {enabled: false}   # 抖音 CDP 旁观弹幕源（回退用）
+  ingress_dyhub:    {enabled: false}   # DyHub 轻量弹幕（推荐：20MB，需 vendor/dyhub/dist）
+  brain:            {enabled: true}    # 大脑：人设/记忆/情绪/LLM
+  voice:            {enabled: true}    # 语音路由
+  render_live2d:    {enabled: true}    # Live2D 形象引擎（默认）
+  render_three3d:   {enabled: false}   # 3D 跳舞引擎（第二批选配）
+  render_livetalking:{enabled: false}  # LiveTalking 真人视频引擎（选配）
+  music:            {enabled: true}    # 点歌台
+  gift_tiers:       {enabled: true}    # 礼物档位动作/感谢
+  story:            {enabled: false}   # 故事电台（M6）
+  cooldown_guard:   {enabled: true}    # 防冷场
+  filter:           {enabled: true}    # 双向敏感词过滤
+  billing:          {enabled: true}    # token/收入账单
+  # ── 批次2选配 ──
+  growth:           {enabled: true}    # 养成进化+榜一（投喂涨体重，全落盘）
+  dance:            {enabled: true}    # 跳舞触发（观众喊"跳舞"，Live2D舞蹈模式）
+  guess_song:       {enabled: true}    # 猜歌盲盒（弹幕"猜歌"开局）
+  boss:             {enabled: true}    # 合作打Boss（弹幕"开Boss"）
+  souvenir:         {enabled: true}    # 纪念品系统（大礼自动归档签名卡）
+  minigame:         {enabled: true}    # 弹幕小游戏（"接龙"/"猜数字"）
+  partner_ipc:      {enabled: false}   # 官方伴侣IPC数据源（mock可测/native需伴侣拉起）
+  livetalking:      {enabled: false}   # LiveTalking 全接管（需另起其GPU服务）
+
+# ══════════ 弹幕源参数 ══════════
+ingress:
+  like_window: 2.0        # 点赞聚合窗口（秒）
+  combo_window: 3.0       # 礼物连击合并窗口（秒）
+  reply_rate_limit: 8     # 每分钟最多念几条回复
+  chat_max_pending: 7     # 弹幕滑动窗口（防刷屏，窗口内随机选人）
+  user_gap: 8.0           # 同一观众两次被回应的最小间隔（秒）
+  global_gap: 2.5         # 两条回复的全局最小间隔（秒）
+
+# ══════════ 大脑 ══════════
+brain:
+  # 本地 LLM 快车道（fast_reply 同款双路由，零 key、1.6~3s；挂了自动落 aimyria）
+  local_routes:
+    - {url: "http://127.0.0.1:3425/v1", model: "auto/glm-5.3"}
+    - {url: "http://127.0.0.1:8300/v1", model: "glm-5.3"}
+  # OpenAI 兼容网关；primary 挂了走 fallback，再挂走 backup 接口
+  primary:
+    base_url: "https://aimyria.com/v1"   # 我们的中转站（主云通道）；密钥走 AIMYRIA_KEY
+    key_env: "AIMYRIA_KEY"
+    model: "deepseek-v4.1-flash"
+  fallback:  {base_url: "https://api.deepseek.com", key_env: "DEEPSEEK_API_KEY", model: "deepseek-chat"}
+  backup:    {}   # 例：{base_url: "...", key_env: "...", model: "..."}
+  temperature: 0.8
+  max_tokens: 400
+  timeout_s: 120          # aimyria 高峰实测 50s+ 延迟，放宽；换官方 deepseek 可调回 30
+  turn_deadline_s: 30     # 单轮回复总预算
+  persona_dir: "characters"   # 人设卡目录（card.json + style.md + live/）
+  mood:
+    start: 60             # 0-100
+    praise: +4            # 被夸
+    gift_small: +3
+    gift_big: +12
+    decay_per_min: 2      # 冷场衰减
+    low_threshold: 25     # 跌破触发主动搭话
+  memory:
+    explicit_only: true   # 只记显式触发（"记住 xxx"）
+    allowed_keys: ["称呼", "喜好", "身份", "约定"]
+    ttl_days: 30
+    data_file: "data/memory.json"
+
+# ══════════ 语音 ══════════
+voice:
+  primary: "gptsovits"    # gptsovits=GPT-SoVITS 夹子音克隆（一键包起后即生效）| edge=在线兜底
+  fallback: "edge"
+  cache_size: 300
+  cache_dir: "data/cache/tts"
+  edge:
+    voice: "zh-CN-XiaoyiNeural"       # 免费端点仅晓伊/晓晓可用（晓双/晓幼被微软限制）
+    rate: "+12%"                      # 元气调校：提速+提调（用户要「元气」听感）
+    pitch: "+8Hz"
+  gptsovits:
+    url: "http://127.0.0.1:9880/tts"   # GPT-SoVITS api_v2（一键包启动 api_v2.bat）
+    ref_audio: "characters/voices/jia.wav"
+    prompt_text: "我再说一遍，我这不叫夹子，我只是比较嗲，而且我这种优点可多啦，一机面镜有安全感，稳定性好，接进器，不容易撞头，捡石头车坏，你可别太羡慕我哼。"
+    speed: 1.0
+  cosyvoice:
+    url: "http://127.0.0.1:8767/tts"   # E:\ai\cosyvoice\cosy_server.py（备用，默认不启动省显存）
+  livetalking:
+    base_url: "http://127.0.0.1:8010"  # 需先单独跑起 LiveTalking（GPU）
+    voiceid: "zh-CN-XiaoyiNeural"
+  sentence_max_chars: 78  # 前端切段上限
+
+# ══════════ 形象 ══════════
+render:
+  engine: "live2d"
+  layout: "portrait"   # portrait=抖音竖屏9:16（默认） | landscape=横屏铺满        # live2d | three3d | livetalking
+  live2d:
+    model_dir: "characters/live2d"
+    lip_sync: true
+  stage:
+    scene: "default"
+    mood_lighting: true   # 情绪色灯光
+    anti_record_clock: true  # 防录播动态时钟
+
+# ══════════ 节目 ══════════
+music:
+  lib_dir: "characters/music"   # 本地曲库（歌手 - 歌名.mp3）
+  netease: {enabled: false}     # 网易云点歌：版权风险，默认关
+  max_pending: 12
+  max_pending_per_user: 2
+  replay_cooldown: 600    # 同一首歌复播冷却（秒）
+
+gift_tiers:
+  # 按整组抖币定档 → 专属动作/感谢模板；礼物名专属规则单独配
+  tiers:
+    - {name: "普通",   min: 0,   motion: "wave",   template: "谢谢 {nickname} 的{gift_name}~"}
+    - {name: "用心",   min: 10,  motion: "heart",  template: "{nickname} 太贴心了吧！"}
+    - {name: "惊喜",   min: 100, motion: "dance",  template: "哇！{nickname} 大佬我直接原地转圈！"}
+    - {name: "排面",   min: 1000, motion: "dance", template: "{nickname}！！这排面小鱼记一辈子！！"}
+  custom:
+    玫瑰: {motion: "heart", template: "收到 {nickname} 的玫瑰，先别谢，脸红三秒。"}
+
+cooldown_guard:
+  idle_seconds: 20       # 无人互动阈值
+  check_interval: 8
+
+# ══════════ 故事电台（选配） ══════════
+story:
+  opener_minutes: 8      # 开场
+  rounds: 5              # 讲述+互动 轮数
+  story_minutes: 6       # 每轮讲述分钟数
+  interact_minutes: 4    # 每轮互动分钟数
+  takeover_cooldown: true # 冷场时自动开播故事
+  outline:               # 剧情大纲（每轮一段）
+    - "深海邮局的夜班，小鱼捡到一封没有署名的信。"
+    - "信里夹着一片会发光的鱼鳞，全城的人都在找它。"
+    - "小鱼发现鳞片每晚都在变颜色，像是活着的心跳。"
+    - "一位老海龟船长出现，说这鳞片是他丢失的船票。"
+    - "最后一次涨潮前，小鱼要决定：归还鳞片，还是留下它。"
+
+# ══════════ 批次2选配参数 ══════════
+guess_song:
+  preview_seconds: 15     # 前奏秒数
+
+dyhub:
+  port: 18764
+  collector: "lightweight"   # lightweight=纯wss直连(~20MB) | browser=浏览器引擎(抗风控)
+dance:
+  cooldown: 45           # 两次跳舞最小间隔（秒）
+  seconds: 25            # 舞蹈模式持续秒数
+
+partner_ipc:
+  mode: "mock"           # mock=本地仿真（开发） | native=被伴侣拉起（真插件）
+
+# ══════════ 合规过滤 ══════════
+filter:
+  # 词库文件：config/wordlist.txt（每行一词或 正则::pattern）；精确+正则双向
+  wordlist: "config/wordlist.txt"
+  on_hit: "deflect"        # deflect=岔开话题不解释规则 | drop=丢弃 | mask=脱敏后放行

@@ -1,0 +1,10 @@
+# 小肥鱼直播间 · 运行依赖（刻意保持极轻）
+aiohttp>=3.9
+edge-tts>=6.1
+openai>=1.30
+websockets>=12.0
+websocket-client>=1.7     # 抖音 CDP 弹幕源用（ingress_cdp）
+PyYAML>=6.0
+
+# 可选（GPU 声线克隆，装了才启用 cosyvoice 适配器）
+# torch / funasr 等 — 见 voice/cosyvoice.py 顶部说明

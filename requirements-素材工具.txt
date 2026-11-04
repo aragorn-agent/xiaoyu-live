@@ -1,0 +1,6 @@
+# 素材再生成管线依赖（make_assets_green.py 等，运行直播不需要装）
+# 用途：绿幕键控 → 生成 characters/avatar/ 下的三态双轨素材
+numpy>=1.26
+opencv-python>=4.9
+scipy>=1.11
+rembg[cpu]>=2.0.57

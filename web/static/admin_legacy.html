@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>小肥鱼直播间 · 中控台</title>
+<style>
+  :root { --bg:#0b1220; --panel:#111a2c; --line:#1e2a44; --text:#dce6f5; --dim:#7d8aa5; --ok:#4ade80; --warn:#fbbf24; --err:#f87171; --accent:#5eead4; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--text); font:14px/1.5 "Microsoft YaHei", system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:10px 16px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; font-weight:600; }
+  header .dot { width:8px; height:8px; border-radius:50%; background:var(--err); }
+  header .dot.on { background:var(--ok); }
+  header .stat { color:var(--dim); font-size:12px; }
+  header .stat b { color:var(--text); }
+  main { display:grid; grid-template-columns: 280px 1fr 320px; gap:12px; padding:12px; height:calc(100vh - 52px); }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
+  section h2 { font-size:12px; color:var(--dim); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--line); text-transform:uppercase; letter-spacing:.08em; }
+  .scroll { overflow-y:auto; flex:1; }
+  /* 模块列表 */
+  .mod { display:flex; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid var(--line); }
+  .mod .nm { flex:1; }
+  .mod .st { font-size:11px; color:var(--dim); }
+  .mod .st.running { color:var(--ok); } .mod .st.error { color:var(--err); } .mod .st.stopped { color:var(--warn); }
+  .switch { width:34px; height:18px; border-radius:9px; background:#2a3654; position:relative; cursor:pointer; transition:.15s; flex:none; }
+  .switch::after { content:""; position:absolute; width:14px; height:14px; border-radius:50%; background:#8fa2c4; top:2px; left:2px; transition:.15s; }
+  .switch.on { background:var(--accent); } .switch.on::after { left:18px; background:#06281f; }
+  /* 事件流 */
+  .ev { padding:6px 12px; border-bottom:1px solid var(--line); font-size:12px; }
+  .ev .t { color:var(--dim); margin-right:6px; font-variant-numeric:tabular-nums; }
+  .ev .topic { color:var(--accent); margin-right:6px; }
+  .ev.chat .topic { color:#7dd3fc; } .ev.gift .topic { color:#fbbf24; } .ev.member .topic { color:#a78bfa; }
+  /* 注入面板 */
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px; }
+  button { background:#1b2745; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 6px; cursor:pointer; font-size:13px; }
+  button:hover { background:#24335c; border-color:#33456e; }
+  input, select { background:#0e1730; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px; width:100%; }
+  .row { padding:0 10px 8px; display:flex; gap:8px; }
+  .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px; }
+  .kpi { background:#0e1730; border-radius:8px; padding:8px; text-align:center; }
+  .kpi b { display:block; font-size:18px; }
+  .kpi span { font-size:11px; color:var(--dim); }
+  #cfgView { font:11px/1.5 Consolas, monospace; white-space:pre; padding:10px; color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" id="sseDot"></div>
+  <h1>小肥鱼直播间 · 中控台</h1>
+  <span class="stat">运行 <b id="kUptime">0s</b></span>
+  <span class="stat">收入 <b id="kIncome">0</b> 抖币</span>
+  <span class="stat">观众 <b id="kViewers">0</b></span>
+  <span class="stat" style="margin-left:auto"><a href="/models" target="_blank" style="color:var(--accent)">挑选形象 ↗</a> <a href="/" target="_blank" style="color:var(--accent)">舞台 ↗</a></span>
+</header>
+<main>
+  <section>
+    <h2>模块选配</h2>
+    <div class="scroll" id="modList"></div>
+    <h2>统计</h2>
+    <div class="kpis">
+      <div class="kpi"><b id="kEvents">0</b><span>互动事件</span></div>
+      <div class="kpi"><b id="kGifts">0</b><span>礼物</span></div>
+      <div class="kpi"><b id="kChat">0</b><span>弹幕</span></div>
+    </div>
+    <h2>当前配置（只读）</h2>
+    <div class="scroll" id="cfgView"></div>
+  </section>
+
+  <section>
+    <h2>事件流（SSE 实时）</h2>
+    <div class="scroll" id="feed"></div>
+  </section>
+
+  <section>
+    <h2>注入测试（mock）</h2>
+    <div class="row" style="padding-top:10px"><input id="inNick" value="阿拉贡" placeholder="昵称"></div>
+    <div class="row"><input id="inText" value="小鱼今天真好看" placeholder="弹幕内容"></div>
+    <div class="btns">
+      <button data-act="chat">发弹幕</button>
+      <button data-act="member">模拟进房</button>
+      <button data-act="like">点赞 ×5</button>
+      <button data-act="follow">模拟关注</button>
+      <button data-act="rose">送 玫瑰</button>
+      <button data-act="car">送 跑车</button>
+      <button data-act="combo">礼物连击 ×3</button>
+      <button data-act="remember">说"记住…"</button>
+    </div>
+    <h2>形象模型（Live2D）</h2>
+    <div class="row" style="padding-top:10px"><select id="modelSel"></select></div>
+    <div class="btns"><button data-act="model" style="grid-column:1/-1">应用模型（舞台刷新生效）</button></div>
+    <h2>小鱼的生活 · 喂料</h2>
+    <div class="row" style="padding-top:10px"><input id="lifeTitle" placeholder="标题（如：刚刷到的新闻/视频）"></div>
+    <div class="row"><textarea id="lifeContent" rows="3" style="width:100%;background:#0e1730;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px" placeholder="粘贴正文/简介/高赞评论——小鱼会把它变成自己的记忆和观点"></textarea></div>
+    <div class="btns">
+      <button data-act="feed_life" style="grid-column:1/-1">喂给她（LLM 自省 ~30s）</button>
+      <button data-act="compress_life" style="grid-column:1/-1">压缩成人格画像（每周一次）</button>
+    </div>
+    <h2>批次2测试</h2>
+    <div class="btns">
+      <button data-act="dance">喊"跳舞"</button>
+      <button data-act="feed">投喂大礼（升级测试）</button>
+    </div>
+    <h2>会话</h2>
+    <div class="btns">
+      <button data-act="boot" style="grid-column:1/-1">开播清场（重置统计）</button>
+      <button data-act="runsim" style="grid-column:1/-1">跑完整剧本（一轮）</button>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const feed = $("#feed");
+let lastSeq = 0;
+
+function addEv(d) {
+  const el = document.createElement("div");
+  const type = (d.data && (d.data.type || "")) || "";
+  el.className = "ev " + type;
+  const time = new Date((d.ts || Date.now()/1000) * 1000).toLocaleTimeString("zh-CN", {hour12:false});
+  el.innerHTML = `<span class="t">${time}</span><span class="topic">${d.topic}</span>` +
+    `<span>${esc(summarize(d))}</span>`;
+  feed.prepend(el);
+  while (feed.children.length > 300) feed.lastChild.remove();
+}
+function summarize(d) {
+  const v = d.data || {};
+  if (d.topic === "live.event") {
+    if (v.type === "comment") return `${v.nickname}：${v.content}`;
+    if (v.type === "gift") return `${v.nickname} 送 ${v.gift_name}×${v.gift_num}（${v.total_value}抖币）`;
+    if (v.type === "member") return `${v.nickname} 来了`;
+    if (v.type === "like") return `${v.nickname} 点赞 ×${v.like_num}`;
+    if (v.type === "follow") return `${v.nickname} 关注了主播`;
+    if (v.type === "room_stats") return `在线 ${v.member_count}`;
+    return v.nickname || "";
+  }
+  if (d.topic === "brain.reply") return `小鱼：${v.text}`;
+  if (d.topic === "voice.ready") return `语音就绪 ${v.speech_id||""}`;
+  if (d.topic === "voice.speaking") return v.speaking ? "开口说话" : "说完";
+  return JSON.stringify(v).slice(0, 120);
+}
+function esc(s) { return String(s).replace(/[<>&]/g, c => ({"<":"&lt;","&gt":"&gt;","&":"&amp;"}[c]||c)); }
+
+// SSE
+const es = new EventSource("/api/events");
+es.onopen = () => $("#sseDot").classList.add("on");
+es.onerror = () => $("#sseDot").classList.remove("on");
+es.onmessage = (m) => { try { addEv(JSON.parse(m.data)); } catch(e) {} };
+
+// 状态轮询
+async function refresh() {
+  try {
+    const s = await (await fetch("/api/state")).json();
+    $("#kUptime").textContent = Math.round(s.pipeline.uptime_s) + "s";
+    $("#kIncome").textContent = s.pipeline.income_diamonds;
+    $("#kViewers").textContent = s.pipeline.viewers;
+    $("#kEvents").textContent = Object.values(s.pipeline.by_type).reduce((a,b)=>a+b,0);
+    $("#kGifts").textContent = s.pipeline.by_type.gift || 0;
+    $("#kChat").textContent = s.pipeline.by_type.comment || 0;
+    const list = $("#modList"); list.innerHTML = "";
+    for (const [name, st] of Object.entries(s.modules)) {
+      const row = document.createElement("div"); row.className = "mod";
+      row.innerHTML = `<span class="nm">${name}</span><span class="st ${st.state}">${st.state}${st.error?(":"+st.error):""}</span>`;
+      const sw = document.createElement("div"); sw.className = "switch" + (st.enabled ? " on" : "");
+      sw.onclick = async () => {
+        await fetch(`/api/modules/${name}/toggle`, {method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({enabled: !st.enabled})});
+        refresh();
+      };
+      row.appendChild(sw); list.appendChild(row);
+    }
+  } catch (e) {}
+}
+refresh(); setInterval(refresh, 3000);
+fetch("/api/config").then(r=>r.json()).then(c => $("#cfgView").textContent = JSON.stringify(c, null, 1));
+fetch("/api/models").then(r=>r.json()).then(d => {
+  const sel = $("#modelSel");
+  sel.innerHTML = (d.models||[]).map(m => `<option value="${m.file}" ${m.file===d.current?"selected":""}>${m.id}</option>`).join("");
+});
+document.querySelector('button[data-act="model"]').onclick = async () => {
+  await fetch("/api/config", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({path:"render.live2d.model", value:$("#modelSel").value})});
+  alert("已保存，刷新舞台页生效：" + $("#modelSel").value);
+};
+
+// 注入按钮
+const NICK = () => $("#inNick").value.trim() || "测试观众";
+const TEXT = () => $("#inText").value.trim();
+async function inject(payload) {
+  payload.msg_id = "ui-" + Date.now() + "-" + Math.random().toString(36).slice(2,7);
+  await fetch("/api/inject", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+}
+document.querySelectorAll("button[data-act]").forEach(btn => btn.onclick = async () => {
+  const act = btn.dataset.act;
+  if (act === "chat")    return inject({msg_type:2, nickname:NICK(), sec_open_id:"u_"+NICK(), content:TEXT()});
+  if (act === "member")  return inject({msg_type:6, nickname:NICK(), sec_open_id:"u_"+NICK()});
+  if (act === "like")    return inject({msg_type:1, nickname:NICK(), sec_open_id:"u_"+NICK(), like_num:5});
+  if (act === "follow")  return inject({msg_type:5, nickname:NICK(), sec_open_id:"u_"+NICK(), user_follow_action:1});
+  if (act === "rose")    return inject({msg_type:3, nickname:NICK(), sec_open_id:"u_"+NICK(), gift_name_plain:"玫瑰", gift_num:1});
+  if (act === "car")     return inject({msg_type:3, nickname:NICK(), sec_open_id:"u_"+NICK(), gift_name_plain:"跑车", gift_num:1});
+  if (act === "combo") {
+    for (let i=0;i<3;i++) { inject({msg_type:3, nickname:NICK(), sec_open_id:"u_"+NICK(), gift_name_plain:"玫瑰", gift_num:1}); await new Promise(r=>setTimeout(r,400)); }
+    return;
+  }
+  if (act === "remember") return inject({msg_type:2, nickname:NICK(), sec_open_id:"u_"+NICK(), content:"记住我是常熬夜的程序员"});
+  if (act === "dance")   return inject({msg_type:2, nickname:NICK(), sec_open_id:"u_"+NICK(), content:"跳舞！"});
+  if (act === "feed") {
+    for (let i=0;i<5;i++) { inject({msg_type:3, nickname:NICK(), sec_open_id:"u_"+NICK(), gift_name_plain:"嘉年华", gift_num:1}); await new Promise(r=>setTimeout(r,300)); }
+    return;
+  }
+  if (act === "feed_life") {
+    btn.disabled = true; btn.textContent = "小鱼正在消化...";
+    const r = await fetch("/api/life/feed", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({title: $("#lifeTitle").value, content: $("#lifeContent").value})});
+    const j = await r.json();
+    btn.disabled = false; btn.textContent = "喂给她（LLM 自省 ~30s）";
+    alert(j.ok ? "小鱼记住了：" + (j.entry?.summary || "").slice(0, 60) : "失败：" + j.error);
+    return;
+  }
+  if (act === "compress_life") {
+    btn.disabled = true; btn.textContent = "压缩中...";
+    const r = await fetch("/api/life/compress", {method:"POST"});
+    const j = await r.json();
+    btn.disabled = false; btn.textContent = "压缩成人格画像（每周一次）";
+    alert(j.ok ? "画像已更新，覆盖 " + (j.covered ?? 0) + " 条记忆" : "失败：" + JSON.stringify(j).slice(0,80));
+    return;
+  }
+  if (act === "boot")     return fetch("/api/boot", {method:"POST"});
+  if (act === "runsim") {
+    const script = ["member","chat","like","follow","rose","combo","remember"];
+    for (const a of script) { btn.disabled = true; document.querySelector(`button[data-act="${a}"]`)?.click(); await new Promise(r=>setTimeout(r,1200)); }
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

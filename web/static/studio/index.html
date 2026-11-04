@@ -1,0 +1,2956 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<script>
+// API-SHIM: dafeiyu 特有端点 → 本项目适配（stub 或重写）
+(function(){
+  const origFetch = window.fetch;
+  const STUB = {ok: true, data: {}, traces: [], items: [], entries: [], status: "idle", connected: false};
+  window.fetch = async function(url, opts) {
+    const u = typeof url === "string" ? url : url.url;
+    // 不适用的 dafeiyu 专属模块 → 空响应
+    if (/^\/api\/(agent|game|recording|play|skill|bili|bilibili)/.test(u)) {
+      return new Response(JSON.stringify(STUB), {status: 200, headers: {"Content-Type": "application/json"}});
+    }
+    return origFetch(url, opts);
+  };
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雷霆小肥鱼直播姬 · Studio</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#171b24; --panel2:#1b202c; --line:rgba(255,255,255,.09);
+    --text:#f2f5fb; --muted:#8e99ad; --gold:#ffd60a; --fish:#64d2ff;
+    --ok:#30d158; --warn:#ff9f0a; --bad:#ff453a; --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"SF Pro Text","SF Pro Display","PingFang SC","HarmonyOS Sans SC","MiSans","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  body{min-height:100vh;overflow-x:hidden}
+  .aurora{position:fixed;inset:-20% -10% auto -10%;height:60vh;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(40% 55% at 18% 30%, rgba(127,182,255,.20), transparent 70%),
+      radial-gradient(35% 50% at 78% 18%, rgba(244,201,104,.13), transparent 70%),
+      radial-gradient(45% 60% at 55% 0%, rgba(120,90,255,.10), transparent 70%);
+    filter:blur(20px)}
+  header{position:relative;z-index:1;display:flex;align-items:center;gap:18px;
+    padding:18px 26px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(20,22,31,.92), rgba(11,13,18,.72));backdrop-filter:blur(10px)}
+  .brand{display:flex;align-items:center;gap:13px;min-width:220px}
+  .brand img{width:46px;height:46px;border-radius:50%;object-fit:cover;
+    border:1.5px solid rgba(244,201,104,.65);box-shadow:0 0 0 3px rgba(244,201,104,.08)}
+  .brand h1{font-size:19px;margin:0;letter-spacing:.5px}
+  .brand small{color:var(--muted);font-size:10.5px;letter-spacing:2.4px}
+  .pills{display:flex;gap:8px;flex-wrap:wrap;flex:1}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:12px;color:var(--muted)}
+  .pill b{color:var(--text);font-weight:600}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--bad);box-shadow:0 0 8px currentColor}
+  .dot.ok{background:var(--ok);color:var(--ok)}
+  .dot.warn{background:var(--warn);color:var(--warn)}
+  .dot.bad{background:var(--bad);color:var(--bad)}
+  .top-links{display:flex;gap:10px}
+  .top-links a{color:var(--muted);text-decoration:none;font-size:12.5px;padding:6px 10px;
+    border:1px solid var(--line);border-radius:9px}
+  .top-links a:hover{color:var(--gold);border-color:rgba(244,201,104,.45)}
+  .admin-shell{position:relative;z-index:1;display:grid;grid-template-columns:224px minmax(0,1fr);gap:16px;
+    padding:18px 22px 8px;max-width:1680px;margin:0 auto;align-items:start}
+  .sidebar{position:sticky;top:18px;background:linear-gradient(180deg, rgba(28,33,44,.85), rgba(19,23,32,.88));
+    border:1px solid rgba(255,255,255,.09);border-radius:var(--radius);padding:14px 12px;min-height:calc(100vh - 122px);
+    backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);
+    box-shadow:0 10px 34px rgba(0,0,0,.30)}
+  .side-head{padding:4px 8px 14px;border-bottom:1px solid var(--line)}
+  .side-kicker{display:block;color:var(--gold);font-size:9.5px;letter-spacing:2.2px;margin-bottom:5px}
+  .side-head strong{font-size:15px;letter-spacing:.5px}
+  .side-nav{display:flex;flex-direction:column;gap:3px;padding-top:12px}
+  .nav-group{font-size:10px;letter-spacing:1.4px;color:var(--muted);padding:12px 9px 5px}
+  .nav-item{display:flex;align-items:center;gap:9px;width:100%;border:1px solid transparent;
+    background:transparent;color:#b9c2d6;border-radius:9px;padding:9px 10px;font-size:12.5px;
+    font-family:inherit;cursor:pointer;text-align:left;transition:.15s}
+  .nav-item i{font-style:normal;width:17px;text-align:center;color:var(--muted);font-size:13px}
+  .nav-item b{margin-left:auto;font-size:10px;font-weight:500;color:var(--muted);max-width:64px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav-item:hover{background:rgba(255,255,255,.04);color:var(--text)}
+  .nav-item.active{background:rgba(244,201,104,.10);border-color:rgba(244,201,104,.35);color:var(--gold)}
+  .nav-item.active i{color:var(--gold)}
+  .side-tip{margin-top:18px;padding:10px 8px 2px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:10.5px;line-height:1.65}
+  .side-tip code{font-family:Consolas,monospace;color:#c8d2e6}
+  .workspace{min-width:0}
+  .view{display:none;animation:viewIn .16s ease-out}
+  .view.active{display:block}
+  @keyframes viewIn{from{opacity:.55;transform:translateY(3px)}to{opacity:1;transform:none}}
+  .view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
+    padding:7px 2px 15px;flex-wrap:wrap}
+  .eyebrow{display:block;color:var(--gold);font-size:10px;letter-spacing:2px;margin-bottom:5px}
+  .view-head h2{margin:0;font-size:23px;letter-spacing:.3px}
+  .view-head p{margin:7px 0 0;color:var(--muted);font-size:12px;line-height:1.7;max-width:700px}
+  .head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .head-actions a{color:var(--muted);text-decoration:none;font-size:12px;border:1px solid var(--line);
+    border-radius:8px;padding:6px 10px}
+  .head-actions a:hover{color:var(--gold);border-color:rgba(244,201,104,.4)}
+  .grid{display:grid;gap:16px}
+  .grid.two{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  .grid.wide{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);align-items:start}
+  .grid .card{min-width:0}
+
+  .card{background:linear-gradient(180deg, rgba(30,35,46,.80), rgba(22,26,35,.86));
+    border:1px solid rgba(255,255,255,.09);border-radius:var(--radius);padding:16px;
+    backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);
+    box-shadow:0 10px 34px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05)}
+  .card h2{display:flex;align-items:center;justify-content:space-between;
+    font-size:12.5px;letter-spacing:1.6px;color:var(--muted);margin:0 0 13px;font-weight:600}
+  .card h2 span{color:var(--gold);letter-spacing:0;font-weight:500}
+  /* persona */
+  .editor{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .editor select{width:100%;background:#0f121b;border:1px solid var(--line);color:var(--text);
+    border-radius:9px;padding:8px 10px;font-size:12px}
+  .editor textarea{width:100%;min-height:300px;background:#0b0d12;border:1px solid var(--line);
+    border-radius:10px;padding:11px 12px;color:#dbe2f2;font:12px/1.7 Consolas,"Cascadia Mono",monospace;
+    resize:vertical}
+  .editor textarea:focus{outline:none;border-color:rgba(244,201,104,.55)}
+  .editor .meta{font-size:11px;color:var(--muted);line-height:1.6}
+  .editor .meta b{color:var(--gold);font-weight:500}
+  .who{display:flex;gap:13px;align-items:center}
+  .who img{width:62px;height:62px;border-radius:16px;object-fit:cover;
+    border:1.5px solid rgba(244,201,104,.5)}
+  .who .name{font-size:19px;font-weight:700}
+  .who .title{font-size:11.5px;color:var(--gold);letter-spacing:1px;margin-top:2px}
+  .tagline{margin:12px 0 4px;font-size:12.5px;color:var(--muted);line-height:1.7}
+  .traits{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .traits li{font-size:12.5px;line-height:1.55;color:#c9d1e4;padding-left:14px;position:relative}
+  .traits li::before{content:"";position:absolute;left:2px;top:8px;width:5px;height:5px;
+    border-radius:50%;background:var(--fish);opacity:.8}
+  .style-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+  .style-grid div{background:rgba(255,255,255,.035);border:1px solid var(--line);
+    border-radius:10px;padding:8px 6px;text-align:center}
+  .style-grid b{display:block;font-size:16px;color:var(--gold)}
+  .style-grid small{font-size:10.5px;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .chip{font-size:11.5px;color:#cfd7ea;border:1px solid var(--line);border-radius:999px;
+    padding:4px 9px;cursor:pointer;background:rgba(255,255,255,.025)}
+  .chip:hover{border-color:rgba(244,201,104,.5);color:var(--gold)}
+  /* voice */
+  .voice-row{display:flex;flex-direction:column;gap:8px;padding:11px 0;border-top:1px dashed var(--line)}
+  .voice-row:first-of-type{border-top:0;padding-top:0}
+  .voice-head{display:flex;align-items:center;gap:9px}
+  .voice-head .nm{font-size:13.5px;font-weight:600}
+  .voice-head .engine{margin-left:auto;font-size:10.5px;color:var(--muted)}
+  .voice-meta{display:flex;gap:10px;align-items:center;font-size:11.5px;color:var(--muted)}
+  .btn{border:1px solid rgba(244,201,104,.5);background:rgba(244,201,104,.10);color:var(--gold);
+    border-radius:9px;padding:7px 14px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .btn:hover{background:rgba(244,201,104,.18)}
+  .btn:disabled{opacity:.45;cursor:wait}
+  .btn.ghost{border-color:var(--line);background:transparent;color:var(--muted)}
+  .btn.ghost:hover{color:var(--text);border-color:#3a4056}
+  .btn.sm{padding:5px 10px;font-size:11.5px;border-radius:8px}
+  .btn.preview{border-color:var(--line);background:rgba(255,255,255,.03);color:#cfd7ea}
+  /* games */
+  .game{padding:11px 0;border-top:1px dashed var(--line)}
+  .game:first-of-type{border-top:0;padding-top:0}
+  .game .gh{display:flex;align-items:center;gap:8px}
+  .game .gn{font-size:13.5px;font-weight:600}
+  .game .gp{margin-left:auto;font-size:10.5px;color:var(--muted)}
+  .game .gd{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+  .badge{font-size:10.5px;color:#9fb3d6;background:rgba(127,182,255,.10);
+    border:1px solid rgba(127,182,255,.22);border-radius:6px;padding:2px 7px}
+  .badge.gold{color:var(--gold);background:rgba(244,201,104,.09);border-color:rgba(244,201,104,.25)}
+  /* composer */
+  textarea{width:100%;background:#0f1118;border:1px solid var(--line);border-radius:11px;
+    color:var(--text);font-family:inherit;font-size:13.5px;line-height:1.65;padding:11px 12px;
+    resize:vertical;min-height:64px;outline:none}
+  textarea:focus{border-color:rgba(244,201,104,.5)}
+  .composer .labels{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin:0 2px 6px}
+  .composer .labels b{color:var(--fish);font-weight:600}
+  .row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .counter{margin-left:auto;font-size:11.5px;color:var(--muted)}
+  .lint{margin-top:13px;border-top:1px dashed var(--line);padding-top:11px;
+    font-size:12px;line-height:1.7;color:var(--muted);min-height:38px;white-space:pre-wrap}
+  .lint .pass{color:var(--ok)}
+  .lint .fail{color:var(--bad)}
+  .lint .warn{color:var(--warn)}
+  .lint .final{color:var(--text);font-size:13.5px;margin-top:6px}
+  .samples{margin-top:6px}
+  /* feed */
+  .feed ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-height:340px;overflow:auto}
+  .feed li{border-left:2px solid rgba(244,201,104,.35);padding-left:11px}
+  .feed .txt{font-size:12.8px;line-height:1.65}
+  .feed .meta{font-size:10.5px;color:var(--muted);margin-top:3px}
+  .empty{font-size:12px;color:var(--muted)}
+  /* right */
+  .kv{display:flex;justify-content:space-between;font-size:12.2px;padding:6px 0;
+    border-top:1px dashed var(--line)}
+  .kv:first-of-type{border-top:0}
+  .kv span{color:var(--muted)}
+  .kv b{font-weight:600;color:#dfe6f5}
+  .field{display:flex;flex-direction:column;gap:5px;margin:8px 0}
+  .field label{font-size:11px;color:var(--muted);letter-spacing:.4px}
+  .field input,.field select{background:#0f121b;border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;width:100%}
+  .field input:focus,.field select:focus{border-color:rgba(244,201,104,.55)}
+  .field .hint{font-size:10.5px;color:var(--muted)}
+  .mini-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;
+    max-height:190px;overflow:auto}
+  .mini-list li{font-size:11.5px;line-height:1.5;color:#c9d1e4;border-left:2px solid var(--line);
+    padding-left:8px}
+  .mini-list .t{color:var(--muted);font-size:10px}
+  .thinking-now{font-size:13px;color:var(--gold)}
+  .layers{display:flex;flex-direction:column;gap:9px}
+  .layer{display:flex;gap:9px;align-items:flex-start;font-size:11.8px;line-height:1.5}
+  .layer i{width:7px;height:7px;border-radius:2px;margin-top:5px;flex:none;background:var(--fish)}
+  .layer b{font-weight:600;color:#dfe6f5}
+  .layer code{font-family:Consolas,monospace;font-size:10.8px;color:var(--muted)}
+  /* agent flow */
+  .agent-map{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 12px}
+  .agent-node{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:11px;
+    color:#cfd7ea;background:rgba(255,255,255,.025)}
+  .agent-node.hot{border-color:rgba(244,201,104,.55);color:var(--gold);background:rgba(244,201,104,.08)}
+  .agent-arrow{color:var(--muted);font-size:10px}
+  .agent-step-ok{color:#8fe0ad}.agent-step-error{color:#ff9b9b}
+  .agent-run{display:flex;gap:8px;align-items:baseline;font-size:11.5px;padding:7px 0;
+    border-top:1px dashed var(--line)}
+  .agent-run:first-child{border-top:0}
+  .agent-run .id{font-family:Consolas,monospace;font-size:10.5px;color:var(--muted)}
+  .agent-run .goal{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* live room */
+  .room-feed{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;
+    max-height:540px;overflow:auto}
+  .room-item{border:1px solid var(--line);border-left:3px solid var(--line);border-radius:8px;
+    padding:7px 10px;background:rgba(255,255,255,.02)}
+  .room-item .room-top{display:flex;gap:8px;align-items:center;font-size:10.5px;color:var(--muted)}
+  .room-kind{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--muted)}
+  .room-user{color:#cfd7ea;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:38%}
+  .room-time{margin-left:auto;font-family:Consolas,monospace;font-size:10px;color:var(--muted)}
+  .room-text{font-size:12.2px;line-height:1.55;margin-top:3px;word-break:break-word}
+  .room-item.k-chat{border-left-color:var(--fish)}
+  .room-item.k-chat .room-kind{color:var(--fish);border-color:rgba(127,182,255,.4)}
+  .room-item.k-gift,.room-item.k-super_chat,.room-item.k-guard{border-left-color:var(--gold)}
+  .room-item.k-gift .room-kind,.room-item.k-super_chat .room-kind,
+  .room-item.k-guard .room-kind{color:var(--gold);border-color:rgba(244,201,104,.45)}
+  .room-item.k-self{border-left-color:#57d38c}
+  .room-item.k-self .room-kind{color:#57d38c;border-color:rgba(87,211,140,.45)}
+  .chip.on{color:var(--gold);border-color:rgba(244,201,104,.55);background:rgba(244,201,104,.10)}
+  /* current game workspace */
+  .run-grid{grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr);align-items:start}
+  .game-hero{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:center;
+    padding:20px 22px;overflow:hidden;position:relative;
+    background:
+      radial-gradient(70% 130% at 0% 0%, rgba(127,182,255,.16), transparent 60%),
+      radial-gradient(55% 120% at 100% 0%, rgba(244,201,104,.11), transparent 65%),
+      linear-gradient(180deg, rgba(23,26,37,.96), rgba(17,19,28,.96))}
+  .game-hero::after{content:"";position:absolute;right:-40px;bottom:-70px;width:240px;height:240px;
+    border-radius:50%;border:1px solid rgba(244,201,104,.12);pointer-events:none}
+  .hero-main{min-width:0;position:relative;z-index:1}
+  .hero-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 0 7px}
+  .hero-title #curGameName{font-size:27px;font-weight:700;letter-spacing:.4px}
+  .hero-status{display:flex;gap:6px;flex-wrap:wrap}
+  .hero-meta{font-size:12.5px;color:#c6d0e4;line-height:1.65}
+  .hero-tip{margin-top:8px;font-size:11.5px;color:var(--muted);line-height:1.7;
+    border-left:2px solid rgba(244,201,104,.4);padding-left:10px}
+  .hero-control{position:relative;z-index:1;background:rgba(11,13,18,.45);border:1px solid var(--line);
+    border-radius:13px;padding:13px;display:flex;flex-direction:column;gap:8px}
+  .hero-control select{width:100%}
+  .hero-buttons{display:flex;gap:8px;flex-wrap:wrap}
+  .hero-buttons .btn{flex:1;min-width:112px}
+  .mini-label{font-size:9.5px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+  .run-card{padding:18px 20px}
+  .run-headline{display:flex;align-items:flex-start;gap:14px;justify-content:space-between}
+  .run-screen{font-size:19px;font-weight:650;letter-spacing:.3px;line-height:1.35}
+  .run-last{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.6}
+  .run-actions{display:flex;gap:8px;flex:none}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:15px 0 12px}
+  .stat{border:1px solid var(--line);border-radius:11px;padding:10px 11px;
+    background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.01))}
+  .stat small{display:block;font-size:9.5px;letter-spacing:1.2px;color:var(--muted);margin-bottom:5px}
+  .stat b{font-size:14px;font-weight:650;color:#e7ecf8;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;display:block}
+  .run-kv{display:flex;flex-wrap:wrap;gap:6px 18px;padding:10px 0;border-top:1px dashed var(--line);
+    border-bottom:1px dashed var(--line);font-size:11px;color:var(--muted)}
+  .run-kv b{color:#cdd6e8;font-weight:500}
+  .play-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:13px}
+  .play-settings .field{margin:0}
+  .rec-card{padding:18px 20px}
+  .rec-summary{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;
+    padding:12px;background:rgba(11,13,18,.35);margin-bottom:12px}
+  .rec-orb{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:13px;
+    color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--line);flex:none}
+  .rec-orb.on{color:#ff8a8a;border-color:rgba(240,106,106,.5);background:rgba(240,106,106,.12);
+    box-shadow:0 0 18px rgba(240,106,106,.18)}
+  .rec-orb.ok{color:#8fe0ad;border-color:rgba(87,211,140,.45);background:rgba(87,211,140,.10)}
+  .rec-title{font-size:13px;font-weight:600}
+  .rec-sub{font-size:10.5px;color:var(--muted);line-height:1.55;margin-top:3px;word-break:break-word}
+  .switch-row{display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;
+    padding:9px 0;border-top:1px dashed var(--line)}
+  .switch-row input{margin-top:2px;accent-color:var(--gold)}
+  .switch-row b{font-weight:600;display:block}
+  .switch-row small{display:block;color:var(--muted);font-size:10.5px;line-height:1.55;margin-top:2px}
+  .switch-row.compact{align-items:center;padding:2px 0;border:0;font-size:11.5px;color:var(--muted)}
+  .rec-policy{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:5px 0 10px}
+  .rec-policy .field{margin:0}
+  .script-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 0;
+    border-top:1px dashed var(--line);font-size:11px;color:var(--muted)}
+  .script-line code{font-family:Consolas,monospace;font-size:10.5px;color:#c8d2e6;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+  .rec-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .rec-actions .btn{flex:1;min-width:104px}
+  .game-list-card{padding:0;margin-top:16px}
+  .game-list-card summary{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;
+    list-style:none;font-size:12.5px}
+  .game-list-card summary::-webkit-details-marker{display:none}
+  .game-list-card summary b{font-size:12.5px}
+  .game-list-card summary span{color:var(--gold);font-size:11px}
+  .game-list-card summary small{margin-left:auto;color:var(--muted);font-size:10.5px}
+  .game-list-card #gameRows{padding:0 18px 8px}
+  .game.current{background:rgba(244,201,104,.055);border-radius:10px;padding-left:9px;padding-right:9px}
+  .train-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  .train-toolbar h2{margin:0}
+  .train-tools{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .train-tools select{background:var(--bg);color:var(--text);border:1px solid var(--line);
+    border-radius:7px;padding:5px 7px;font-size:11.5px}
+  .train-tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 8px}
+  .train-tab{background:rgba(255,255,255,.03);border:1px solid var(--line);color:var(--muted);
+    border-radius:999px;padding:5px 11px;font-size:11.5px;cursor:pointer}
+  .train-tab b{color:var(--gold);margin-left:4px}
+  .train-tab.on{color:var(--gold);border-color:rgba(244,201,104,.55);
+    background:rgba(244,201,104,.10)}
+  .train-digest{border:1px solid rgba(244,201,104,.28);border-radius:10px;
+    background:rgba(244,201,104,.045);padding:12px 14px;margin:0 0 12px}
+  .train-digest-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:7px}
+  .train-digest pre{white-space:pre-wrap;word-break:break-word;margin:0;max-height:360px;
+    overflow:auto;color:#dfe6f3;font:inherit;line-height:1.7}
+  .train-row{border-top:1px solid #222a36;padding:11px 0}
+  .train-row:first-child{border-top:0}
+  .train-row-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .train-row-head b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(560px,100%)}
+  .train-row-head .train-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .train-row-head .btn{padding:4px 9px;font-size:11px}
+  .train-summary{margin:7px 0 3px;line-height:1.65;color:#dfe6f3}
+  .train-pager{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;
+    padding-top:12px;border-top:1px solid #222a36;color:var(--muted);font-size:11.5px}
+  .train-pager button{background:rgba(255,255,255,.03);border:1px solid var(--line);color:var(--text);
+    border-radius:7px;padding:5px 10px;cursor:pointer;font-size:11.5px}
+  .train-pager button:disabled{opacity:.35;cursor:not-allowed}
+  .train-editor-grid{display:grid;grid-template-columns:2fr 1fr 2fr 1fr;gap:10px}
+  .train-editor-grid input{width:100%}
+  /* 模型思考：每轮对话前实际拿到的上下文 + thought */
+  .thought-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  .thought-toolbar h2{margin:0}
+  .thought-tools{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .thought-tools select{background:var(--bg);color:var(--text);border:1px solid var(--line);
+    border-radius:7px;padding:5px 7px;font-size:11.5px}
+  .thought-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+  .thought-row{border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01))}
+  .thought-row.hot{border-color:rgba(244,201,104,.30);background:rgba(244,201,104,.035)}
+  .thought-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10.5px;
+    color:var(--muted)}
+  .thought-source{color:var(--gold);border:1px solid rgba(244,201,104,.35);
+    background:rgba(244,201,104,.08);border-radius:999px;padding:1px 8px;font-size:10px}
+  .thought-ok{color:var(--ok)}.thought-bad{color:var(--bad)}
+  .thought-row .mini-label{display:block;margin:9px 0 2px}
+  .thought-text{font-size:12.4px;line-height:1.65;color:#dfe6f3;white-space:pre-wrap;
+    word-break:break-word}
+  .thought-text.think{color:#f4d692}
+  .thought-text.reply{color:#b9c7de}
+  .thought-empty{font-size:11.5px;line-height:1.6;color:var(--muted)}
+  .thought-detail-meta{font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:10px;
+    word-break:break-word}
+  .thought-msg{border-top:1px dashed var(--line);padding:9px 0}
+  .thought-msg:first-of-type{border-top:0;padding-top:0}
+  .thought-msg-head{display:flex;gap:8px;align-items:center;font-size:10.5px;color:var(--muted);
+    margin-bottom:4px}
+  .thought-msg-head b{color:var(--gold);font-weight:600;letter-spacing:.4px}
+  .thought-msg pre,.thought-block pre{white-space:pre-wrap;word-break:break-word;margin:0;
+    font:11.5px/1.7 Consolas,"Cascadia Mono",monospace;color:#dbe2f2;max-height:360px;
+    overflow:auto;background:rgba(0,0,0,.16);border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px}
+  .thought-block{margin-top:10px}
+  @media (max-width:900px){.train-editor-grid{grid-template-columns:1fr 1fr}}
+  @media (max-width:1100px){.run-grid,.game-hero{grid-template-columns:1fr}.hero-control{max-width:none}}
+  @media (max-width:720px){.stat-grid,.play-settings,.rec-policy{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .run-headline{flex-direction:column}.run-actions{width:100%}.run-actions .btn{flex:1}}
+  @media (max-width:1100px){.admin-shell{grid-template-columns:196px minmax(0,1fr)}.grid.two,.grid.wide{grid-template-columns:1fr}}
+  footer{position:relative;z-index:1;padding:10px 26px 22px;color:var(--muted);font-size:11.5px;
+    max-width:1680px;margin:0 auto;display:flex;gap:16px;flex-wrap:wrap}
+  footer code{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:6px;
+    padding:2px 7px;font-size:11px;color:#c8d2e6}
+  .toast{position:fixed;right:22px;bottom:22px;z-index:9;background:#1b1f2c;border:1px solid var(--line);
+    border-radius:12px;padding:11px 15px;font-size:12.5px;box-shadow:0 12px 40px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;max-width:420px}
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:rgba(240,106,106,.5);color:#ffd2d2}
+  @media (max-width:1100px){.admin-shell{grid-template-columns:196px minmax(0,1fr)}.grid.two,.grid.wide{grid-template-columns:1fr}}
+  @media (max-width:820px){.admin-shell{grid-template-columns:1fr;padding:14px}.sidebar{position:static;min-height:0}
+    .side-nav{flex-direction:row;flex-wrap:wrap;padding-top:8px}.nav-group{display:none}
+    .nav-item{width:auto;padding:7px 10px}.nav-item b{display:none}.side-tip{display:none}
+    .view-head h2{font-size:20px}header{flex-wrap:wrap}.brand{min-width:0}}
+</style>
+<style id="LEITENG-THEME">
+:root { --primary: #14b8a6; --primary-fg: #04241f; }
+.btn-primary { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff !important; }
+.badge.bg-primary { background: var(--primary) !important; }
+a, .link-primary { color: #0d9488 !important; }
+.navbar-brand, .h1 { background: linear-gradient(90deg, #14b8a6, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+</style>
+</head>
+<body>
+<div class="aurora"></div>
+<header>
+  <div class="brand">
+    <img src="/assets/deepseek_fish.jpg" alt="雷霆小肥鱼" onerror="this.style.visibility='hidden'">
+    <div>
+      <h1>雷霆小肥鱼直播姬</h1>
+      <small>LEITENG · XIAOFEIYU LIVE STUDIO</small>
+    </div>
+  </div>
+  <div class="pills" id="pills">
+    <span class="pill"><i class="dot"></i>连接中…</span>
+  </div>
+  <div class="top-links">
+    <a href="#settings">配置</a>
+    <a href="/" target="_blank" rel="noopener">弹幕源</a>
+    <a href="/health" target="_blank" rel="noopener">health</a>
+    <a href="#" id="reload">刷新</a>
+  </div>
+</header>
+
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="side-head">
+      <span class="side-kicker">雷霆小肥鱼 · 管理中心</span>
+      <strong>管理菜单</strong>
+    </div>
+    <nav class="side-nav" id="sideNav">
+      <div class="nav-group">管理</div>
+      <button class="nav-item active" type="button" data-view="basic">
+        <i>◈</i><span>基础配置</span><b id="navVoice">—</b></button>
+      <button class="nav-item" type="button" data-view="games">
+        <i>▦</i><span>当前游戏</span><b id="navGame">—</b></button>
+      <button class="nav-item" type="button" data-view="persona">
+        <i>✎</i><span>人设配置</span><b id="navPersona">—</b></button>
+      <button class="nav-item" type="button" data-view="training">
+        <i>▤</i><span>训练记忆</span><b id="navTraining">—</b></button>
+      <div class="nav-group">直播</div>
+      <button class="nav-item" type="button" data-view="room">
+        <i>◉</i><span>直播间</span><b id="navRoom">—</b></button>
+      <button class="nav-item" type="button" data-view="interaction">
+        <i>✉</i><span>互动</span><b id="navSaid">0</b></button>
+      <button class="nav-item" type="button" data-view="thoughts">
+        <i>☁</i><span>模型思考</span><b id="navThoughts">—</b></button>
+      <button class="nav-item" type="button" data-view="agent">
+        <i>⌁</i><span>Agent 流程</span><b id="navAgent">—</b></button>
+      <button class="nav-item" type="button" data-view="telemetry">
+        <i>◷</i><span>决策与日志</span><b id="navTokens">0</b></button>
+    </nav>
+    <div class="side-tip">
+      <div>当前游戏：<code id="navGameTip">—</code></div>
+      <div style="margin-top:6px">录像：<code id="sideRec">—</code></div>
+      <div style="margin-top:6px">API Key 只存本机，不回显。</div>
+      <div style="margin-top:8px" id="sideVersion">—</div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <section class="view active" data-view="basic" id="view-basic">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">基础配置 / VOICE &amp; LLM</span>
+          <h2>主播的声音与大脑</h2>
+          <p>曼波引擎离线时，点「启动」或直接保存曼波语会拉起本地引擎；语音和模型都写本机 config.json。</p>
+        </div>
+        <div class="head-actions"><a href="#interaction">去互动 →</a><a href="#telemetry">看日志 →</a></div>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h2>语音层 <span id="voiceActive">—</span></h2>
+          <div id="voiceRows"></div>
+        </div>
+
+        <div class="card" id="settings">
+          <h2>配置 <span>只存本机 config.json</span></h2>
+          <div class="field"><label for="cfgVoice">语音</label>
+            <select id="cfgVoice">
+              <option value="mambo">曼波语</option>
+              <option value="animal">动物语</option>
+              <option value="off">静音</option>
+            </select></div>
+          <div class="field"><label for="cfgMamboDir">MamboTTS 目录</label>
+            <input id="cfgMamboDir" placeholder="留空自动探测 D:\MamboTTS\..."></div>
+          <div class="field"><label for="cfgProvider">API 提供方</label>
+            <input id="cfgProvider" placeholder="deepseek"></div>
+          <div class="field"><label for="cfgBase">Base URL</label>
+            <input id="cfgBase" placeholder="https://api.deepseek.com/v1"></div>
+          <div class="field"><label for="cfgModel">模型</label>
+            <input id="cfgModel" list="cfgModels" placeholder="deepseek-chat">
+            <datalist id="cfgModels"></datalist></div>
+          <div class="field"><label for="cfgKey">API Key</label>
+            <input id="cfgKey" type="password" autocomplete="off" placeholder="留空 = 保持">
+            <span class="hint" id="cfgKeyHint">未配置</span></div>
+          <div class="field"><label for="cfgBiliRoom">B 站直播间</label>
+            <input id="cfgBiliRoom" type="number" min="0" placeholder="直播间 URL 里的数字">
+            <span class="hint" id="cfgBiliHint">开启后桌宠监听礼物并绕圈</span></div>
+          <div class="field"><label for="cfgBiliCookie">B 站 Cookie（可选）</label>
+            <input id="cfgBiliCookie" type="password" autocomplete="off" placeholder="留空 = 匿名；只存本机">
+            <span class="hint" id="cfgBiliCookieHint">匿名不够时再填</span></div>
+          <label class="hint" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+            <input id="cfgBiliEnabled" type="checkbox"> 开启 B 站礼物监听
+          </label>
+          <div class="row" style="display:flex;gap:8px">
+            <button class="btn" id="cfgSave">保存配置</button>
+            <button class="btn ghost" id="cfgClearKey">清除 Key</button>
+          </div>
+        </div>
+      </div>
+      <div class="grid two" style="margin-top:16px">
+        <div class="card">
+          <h2>启动方式 <span>离线时</span></h2>
+          <div class="hint" style="line-height:1.9;color:var(--muted)">
+            右侧语音行点「启动」只启动引擎，不会切换当前音色；点「试听」若曼波离线会自动启动并提示稍后重试。
+            引擎地址默认 <code>127.0.0.1:9880</code>，日志在 <code>logs/mambo_engine.*.log</code>。
+          </div>
+        </div>
+        <div class="card">
+          <h2>安全 <span>API Key</span></h2>
+          <div class="hint" style="line-height:1.9;color:var(--muted)">
+            Key 只写本机 <code>config.json</code>（已被 .gitignore 忽略）；接口只返回「已配置」，不会回显。
+            换机器重新填一次即可。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="games" id="view-games">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">CURRENT GAME / LIVE RUN</span>
+          <h2>当前游戏</h2>
+          <p>切换后这里只保留本游戏的局内数据、录像策略和操作；其他游戏收进下面的列表。</p>
+        </div>
+        <div class="head-actions">
+          <a href="#agent">Agent 流程 →</a>
+        </div>
+      </div>
+
+      <div class="game-hero card">
+        <div class="hero-main">
+          <span class="eyebrow" id="curGameKicker">NOW PLAYING</span>
+          <div class="hero-title"><span id="curGameName">—</span><span class="hero-status" id="curGameBadges"></span></div>
+          <div class="hero-meta" id="curGameMeta">—</div>
+          <div class="hero-tip" id="gameHint">—</div>
+        </div>
+        <div class="hero-control">
+          <label class="mini-label" for="cfgGame">切换游戏</label>
+          <select id="cfgGame"></select>
+          <div class="hero-buttons">
+            <button class="btn" id="gameSave">应用切换</button>
+            <button class="btn ghost" id="gameLaunch">启动当前游戏</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid run-grid">
+        <div class="card run-card" id="runCard">
+          <h2>当前局 <span id="runState">—</span></h2>
+          <div class="run-headline">
+            <div>
+              <div class="run-screen" id="playDetail">—</div>
+              <div class="run-last" id="runLast">—</div>
+            </div>
+            <div class="run-actions">
+              <button class="btn" id="playStart" type="button">让她玩</button>
+              <button class="btn ghost" id="playStop" type="button">停手</button>
+              <button class="btn ghost" id="liveToggle" type="button">LLM 直播模式</button>
+            </div>
+          </div>
+          <div class="stat-grid" id="runStats">
+            <div class="stat"><small>步数</small><b id="playStep">—</b></div>
+            <div class="stat"><small>Token</small><b id="playTokens">—</b></div>
+            <div class="stat"><small>LLM</small><b id="playCalls">—</b></div>
+            <div class="stat" id="routeStat"><small>路线</small><b id="playRoute">—</b></div>
+          </div>
+          <div class="run-kv">
+            <span>录像 <b id="playRecord">—</b></span>
+            <span>直播模式 <b id="liveState">—</b></span>
+            <span>当前模块 <b id="liveModule">—</b></span>
+            <span>下次切换 <b id="liveNext">—</b></span>
+          </div>
+          <div class="play-settings" id="playSettings">
+            <div class="field"><label for="playMode">玩法</label>
+              <select id="playMode">
+                <option value="local">本地算账（不烧 token）</option>
+                <option value="llm">LLM 规划（慢，按回合思考）</option>
+              </select></div>
+            <div class="field"><label for="playLlmModel">LLM 模型</label>
+              <input id="playLlmModel" placeholder="deepseek-chat"></div>
+            <div class="field"><label for="playPace">播报节奏</label>
+              <select id="playPace">
+                <option value="voice">慢速：等语音播完再打</option>
+                <option value="normal">普通：旧版快节奏</option>
+              </select></div>
+          </div>
+          <div class="hint" id="playHint">运行中切换玩法会停手，重新点「让她玩」生效；节奏下一步生效。</div>
+        </div>
+
+        <div class="card rec-card" id="recordingCard">
+          <h2>OBS 录像 <span id="recState">—</span></h2>
+          <div class="rec-summary">
+            <div class="rec-orb" id="recOrb">●</div>
+            <div>
+              <div class="rec-title" id="recTitle">未连接 OBS</div>
+              <div class="rec-sub" id="recSub">—</div>
+            </div>
+          </div>
+          <label class="switch-row">
+            <input type="checkbox" id="recMaster">
+            <span><b>自动录像总开关</b><small>关闭后所有游戏都不自动开录；手动「开始录像」仍可用</small></span>
+          </label>
+          <div class="rec-policy">
+            <div class="field"><label for="recEnabled">本游戏自动录像</label>
+              <label class="switch-row compact"><input type="checkbox" id="recEnabled"><span>开局/开播时自动检查并开录</span></label>
+            </div>
+            <div class="field"><label for="recSplit">分集方式</label>
+              <select id="recSplit">
+                <option value="run">一局一集（每局单独 run-NNNN）</option>
+                <option value="none">不分集（连续录一段）</option>
+              </select>
+            </div>
+          </div>
+          <div class="script-line">
+            <span class="mini-label">录制脚本</span>
+            <code id="recScript">—</code>
+            <span class="badge" id="recScriptState">—</span>
+          </div>
+          <div class="rec-actions">
+            <button class="btn" id="recToggle" type="button">开始录像</button>
+            <button class="btn ghost" id="recEnsure" type="button">检查/创建脚本</button>
+            <button class="btn ghost" id="recSave" type="button">保存策略</button>
+          </div>
+          <div class="hint" id="recHint">开启后：先检查本游戏的 OBS 场景脚本，没有就创建；再按策略开录。关闭会停录并收尾。</div>
+        </div>
+      </div>
+
+      <div class="card" id="startOptionsCard" style="display:none">
+        <h2>开局设置 <span id="startOptionsMeta">—</span></h2>
+        <div class="hint" id="startOptionsHint" style="line-height:1.7;color:var(--muted);margin-bottom:8px">—</div>
+        <div class="grid two" id="startOptionsFields"></div>
+        <div class="row" style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="startOptionsSave" type="button">保存开局设置</button>
+          <span class="hint" id="startOptionsState" style="color:var(--muted);font-size:11px"></span>
+        </div>
+      </div>
+
+      <details class="card game-list-card">
+        <summary><b>全部游戏</b><span id="gameCount">—</span><small>切换 / 查看策略与资料</small></summary>
+        <div id="gameRows"></div>
+      </details>
+
+      <div class="card" id="biliPlaylistCard" style="display:none">
+        <h2>B站播放列表 <span id="biliPlaylistState">—</span></h2>
+        <div class="hint" id="biliPlaylistHint" style="margin-bottom:8px;color:var(--muted);font-size:11px">
+          选一个候选 → 播放；新视频会先关掉旧标签页再开新的，同一个视频则直接刷新当前标签页。
+        </div>
+        <div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <button class="btn sm ghost" id="biliRefresh">刷新当前标签页</button>
+          <button class="btn sm ghost" id="biliClose">关闭当前标签页</button>
+          <a class="btn sm ghost" id="biliSceneOpen" href="/bili" target="_blank"
+             rel="noopener">打开直播场景</a>
+          <span class="hint" style="color:var(--muted);font-size:11px">
+            直播姬浏览器源：<code>http://127.0.0.1:8730/bili</code>
+          </span>
+          <span class="hint" id="biliBrowserState" style="color:var(--muted);font-size:11px">—</span>
+        </div>
+        <div id="biliPlaylist"></div>
+      </div>
+
+      <div class="card" id="biliCommentCard" style="display:none">
+        <h2>视频评论 <span>可选 · 只对同类视频</span></h2>
+        <div class="hint" style="line-height:1.8;color:var(--muted);margin-bottom:8px">
+          模型只在“雷霆小肥鱼同类”视频且有具体想法时才写评论；不是每条都发。这里是公开评论，
+          需要 B 站登录 Cookie 才会真正发出。每日上限填 0 表示不限制。
+        </div>
+        <label class="hint" style="display:flex;align-items:center;gap:7px;cursor:pointer;margin-bottom:8px">
+          <input id="biliCommentEnabled" type="checkbox"> 允许自动发视频评论
+        </label>
+        <div class="grid two">
+          <div class="field"><label for="biliCommentMaxDay">每日上限（0 = 不限）</label>
+            <input id="biliCommentMaxDay" type="number" min="0" max="100000" step="1"></div>
+          <div class="field"><label for="biliCommentGap">最小间隔（秒）</label>
+            <input id="biliCommentGap" type="number" min="0" max="86400" step="60"></div>
+          <div class="field"><label for="biliCommentChars">评论字数上限</label>
+            <input id="biliCommentChars" type="number" min="10" max="200" step="10"></div>
+          <div class="field"><label>登录状态</label>
+            <span class="hint" id="biliCommentHint">—</span></div>
+        </div>
+        <div class="row" style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="biliCommentSave">保存评论设置</button>
+          <span class="hint" id="biliCommentState" style="color:var(--muted);font-size:11px"></span>
+        </div>
+        <h3 style="margin:16px 0 4px;font-size:13px">已发评论
+          <span class="hint" id="biliCommentCount" style="color:var(--muted);font-size:11px;font-weight:400">0 条</span>
+        </h3>
+        <div class="hint" style="line-height:1.7;color:var(--muted);font-size:11px;margin-bottom:6px">
+          只记真的发到 B 站视频评论区的：视频链接、标题、评论内容。记录在
+          <code>logs/bilibili_commentary.comments.jsonl</code>，最多留最近 200 条。
+        </div>
+        <div id="biliCommentHistory"></div>
+      </div>
+
+      <div class="card" id="gameDetailCard" style="display:none">
+        <h2><span id="gameDetailTitle">游戏详情</span> <span id="gameDetailMeta">—</span></h2>
+        <div class="hint" id="gameDetailDesc" style="line-height:1.8;color:var(--muted)">—</div>
+        <div class="editor">
+          <select id="gEditFile" onchange="loadGameFile()"></select>
+          <textarea id="gEditText" spellcheck="false" placeholder="选择一篇策略/人设文档开始编辑…"></textarea>
+          <div class="meta" id="gEditHint">不限字数，保存即写盘；页面会立刻刷新。</div>
+          <div class="row" style="margin-top:0">
+            <button class="btn" type="button" onclick="saveGameFile()">保存</button>
+            <button class="btn ghost" type="button" onclick="loadGameFile()">还原</button>
+            <span class="hint" id="gEditState"></span>
+          </div>
+          <div class="hint" id="gEditEffect" style="margin-top:6px;line-height:1.7;color:var(--muted);font-size:11px">
+            生效方式：文档保存后，Agent 下次按需读取时用新内容；正在跑的这局不会热更新——实时决策提示词仍是
+            <code>decision/prompts.py</code>，改完要重启自动玩才生效。人设卡/梗走「人设配置 → 重载人设」。
+          </div>
+        </div>
+        <h2 style="margin-top:14px">游戏资料 <span>原始资料只读，策略与笔记可编辑</span></h2>
+        <div class="hint" id="gMatCounts" style="line-height:1.8;color:var(--muted)">—</div>
+        <div class="chips" id="gMatFiles"></div>
+        <pre id="gMatPreview" style="max-height:260px;overflow:auto;white-space:pre-wrap;font-size:11px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:10px">点上面的资料文件查看内容。</pre>
+      </div>
+    </section>
+
+    <section class="view" data-view="persona" id="view-persona">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">PERSONA / CHARACTER</span>
+          <h2>人设配置</h2>
+          <p>语气、禁语、招牌和节奏都在人设卡里；这里展示当前生效版本与语料。</p>
+        </div>
+      </div>
+      <div class="grid wide">
+        <div class="card" id="personaCard">
+          <h2>性格层 <span id="personaId">—</span></h2>
+          <div class="who">
+            <img src="/assets/deepseek_fish.jpg" alt="" onerror="this.style.visibility='hidden'">
+            <div>
+              <div class="name" id="pName">雷霆小肥鱼</div>
+              <div class="title" id="pTitle">DeepSeek 雷霆小肥鱼</div>
+            </div>
+          </div>
+          <div class="tagline" id="pTagline">一条把算账当正经事的鱼</div>
+          <ul class="traits" id="pTraits"></ul>
+          <div class="style-grid" id="pStyle"></div>
+          <div class="chips" id="pQuips"></div>
+        </div>
+        <div class="card" style="grid-column:1/-1">
+          <h2>编辑人设 / 梗 <span>保存即生效</span></h2>
+          <div class="editor">
+            <select id="pEditFile" onchange="loadPersonaFile()"></select>
+            <textarea id="pEditText" spellcheck="false" placeholder="选择一个文件开始编辑…"></textarea>
+            <div class="meta" id="pEditHint">JSON 会先校验，写坏自动回滚；梗列表保存后自动重建 <b>db/sts2.db</b> 的 memes 表。</div>
+            <div class="row" style="margin-top:0">
+              <button class="btn" type="button" onclick="savePersonaFile()">保存</button>
+              <button class="btn ghost" type="button" onclick="loadPersonaFile()">还原</button>
+              <button class="btn ghost" type="button" onclick="reloadPersona()">重载人设</button>
+              <span class="hint" id="pEditState"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="training" id="view-training">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">TRAINING / WATCH &amp; REMEMBER</span>
+          <h2>训练记忆</h2>
+          <p>她摸鱼刷视频后写下的段落，未压缩时逐条注入 KOOK / 直播的人格提示词；压缩后优先注入长期画像。这里分页查看、逐条编辑；停用后仍保留记录，但不再进人格。</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" type="button" onclick="loadPersona()">刷新记忆</button>
+        </div>
+      </div>
+      <div class="grid wide">
+        <div class="card" style="grid-column:1/-1">
+          <div class="train-toolbar">
+            <h2>B站训练记忆 <span id="trainCount">—</span></h2>
+            <div class="train-tools">
+              <label class="hint">每页
+                <select id="trainPageSize" onchange="trainPerPage(this.value)">
+                  <option value="5">5 条</option>
+                  <option value="10" selected>10 条</option>
+                  <option value="20">20 条</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="train-tabs" id="trainTabs">
+            <button class="train-tab on" type="button" data-train-filter="uncompressed"
+                    onclick="trainFilter('uncompressed')">未压缩 <b id="trainUncompressed">0</b></button>
+            <button class="train-tab" type="button" data-train-filter="compressed"
+                    onclick="trainFilter('compressed')">已压缩 <b id="trainCompressed">0</b></button>
+            <button class="btn ghost" type="button" id="trainDigestToggle"
+                    onclick="toggleTrainDigest()" disabled>查看压缩文本</button>
+          </div>
+          <div class="train-digest" id="trainDigestPanel" hidden>
+            <div class="train-digest-head">
+              <b>压缩后的长期画像</b>
+              <span class="hint" id="trainDigestMeta"></span>
+            </div>
+            <pre id="trainDigestText"></pre>
+          </div>
+          <p class="meta" style="margin-bottom:10px">未压缩的记忆逐条进人格；压缩后只注入长期画像。
+            点「查看 / 编辑」改摘要和评论；停用不删除原始记录。</p>
+          <div id="trainList"></div>
+          <div id="trainPager" class="train-pager"></div>
+          <span class="hint" id="trainState"></span>
+        </div>
+
+        <div class="card" id="trainEditorCard" style="display:none;grid-column:1/-1">
+          <h2>查看 / 编辑 <span id="trainEditorId">—</span></h2>
+          <div class="train-editor-grid">
+            <div class="field"><label>标题</label><input id="trainEditTitle"></div>
+            <div class="field"><label>UP 主</label><input id="trainEditUp"></div>
+            <div class="field"><label>链接</label><input id="trainEditUrl"></div>
+            <div class="field"><label>时长（秒）</label><input id="trainEditDuration" type="number" min="0" step="1"></div>
+          </div>
+          <div class="field" style="margin-top:10px"><label>学到的摘要（会进人格）</label>
+            <textarea id="trainEditSummary" rows="8" spellcheck="false"></textarea></div>
+          <div class="field" style="margin-top:10px"><label>留下的评论</label>
+            <textarea id="trainEditComment" rows="3" spellcheck="false"></textarea></div>
+          <div class="meta" id="trainEditMeta" style="margin-top:8px"></div>
+          <div class="row" style="margin-top:10px">
+            <label class="hint"><input id="trainEditEnabled" type="checkbox"> 启用这条记忆</label>
+            <button class="btn" type="button" onclick="saveTrainingEditor()">保存这条</button>
+            <button class="btn ghost" type="button" onclick="closeTrainingEditor()">取消</button>
+            <button class="btn ghost" type="button" onclick="deleteTrainingEditor()">删除</button>
+            <span class="hint" id="trainEditState"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="interaction" id="view-interaction">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">INTERACTION / SAY IT</span>
+          <h2>互动台</h2>
+          <p>写 thought + meme，先 lint 再送到直播；桌面桌宠和 OBS 弹幕会同步这句。</p>
+        </div>
+      </div>
+      <div class="grid wide">
+        <div class="card composer">
+          <h2>台词台 <span>先算账，再抛梗</span></h2>
+          <div class="labels"><span><b>thought</b> 算账 + 打算（数字为主）</span><span id="thoughtCount">0 字</span></div>
+          <textarea id="thought" rows="3" placeholder="它 21，我最多挡 15"></textarea>
+          <div class="labels" style="margin-top:10px"><span><b>meme</b> 落点：翻车 / 兑现 / 自嘲 / 梗</span><span id="memeCount">0 字</span></div>
+          <textarea id="meme" rows="2" placeholder="差 6，嗨呀。"></textarea>
+          <div class="row">
+            <button class="btn" id="send">送到直播</button>
+            <button class="btn ghost" id="lintOnly">只算 lint</button>
+            <span class="counter" id="composed">—</span>
+          </div>
+          <div class="lint" id="lint">出口前三问：有数字吗？有落点吗？换个人说也一样吗？</div>
+          <div class="chips samples" id="samples"></div>
+        </div>
+
+        <div class="card feed">
+          <h2>最近台词 <span id="seq">seq —</span></h2>
+          <ul id="feed"><li class="empty">还没有台词。先发一句试试。</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="thoughts" id="view-thoughts">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">MODEL TRACE / BEFORE REPLY</span>
+          <h2>模型思考</h2>
+          <p>每轮真正发给模型的上下文、她回复前写下的 thought 和最终回复，都只记在本机。
+            这里分页看，不会发给对方，也不会进聊天记录。</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="thoughtRefresh" type="button">刷新</button>
+          <a href="#telemetry">看运行日志 →</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="thought-toolbar">
+          <h2>对话轨迹 <span id="thoughtTraceCount">—</span></h2>
+          <div class="thought-tools">
+            <label class="hint">来源
+              <select id="thoughtSource" onchange="thoughtFilter(this.value)">
+                <option value="">全部</option>
+              </select>
+            </label>
+            <label class="hint">每页
+              <select id="thoughtPer" onchange="thoughtPerPage(this.value)">
+                <option value="5">5 轮</option>
+                <option value="10" selected>10 轮</option>
+                <option value="20">20 轮</option>
+                <option value="30">30 轮</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="hint" id="thoughtHint" style="line-height:1.75;color:var(--muted);margin-bottom:4px">
+          优先生成 thought；provider 返回 reasoning_content 时也会一起显示。聊天为了速度默认关着
+          thinking，所以没有 thought/reasoning 的轮次会如实写「本轮没留思考」，但完整上下文仍可展开。
+        </div>
+        <div class="thought-list" id="thoughtList">
+          <div class="empty">还没有模型对话。KOOK 收到消息后这里会出现第一轮。</div>
+        </div>
+        <div id="thoughtPager" class="train-pager"></div>
+        <span class="hint" id="thoughtState"></span>
+      </div>
+      <div class="card" id="thoughtDetailCard" style="display:none;margin-top:16px">
+        <h2>完整一轮 <span id="thoughtDetailMeta">—</span></h2>
+        <div id="thoughtDetail"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn ghost" type="button" onclick="closeThoughtDetail()">收起</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="room" id="view-room">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">LIVE ROOM / BILIBILI</span>
+          <h2>直播间互动</h2>
+          <p>进入 / 关注 / 点赞 / 弹幕 / 礼物 / 上舰，只保留最近 120 条；下面可以直接往直播间发弹幕。</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="roomRefresh" type="button">刷新</button>
+          <a href="#basic">B 站设置 →</a>
+        </div>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h2>连接 <span id="roomState">—</span></h2>
+          <div class="kv"><span>房间</span><b id="roomId">—</b></div>
+          <div class="kv"><span>互动条数</span><b id="roomCount">—</b></div>
+          <div class="kv"><span>最近一条</span><b id="roomLast">—</b></div>
+          <div class="kv"><span>分类</span><b id="roomKinds">—</b></div>
+          <div class="hint" id="roomHint" style="line-height:1.75;color:var(--muted);margin-top:10px">
+            监听跑在桌宠进程；只开控制台时这里只显示历史。
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label for="roomText">发弹幕（最多 40 字）</label>
+            <textarea id="roomText" rows="2" maxlength="40" placeholder="这手不亏，稳的。"></textarea>
+          </div>
+          <div class="row" style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+            <button class="btn" id="roomSend" type="button">发到直播间</button>
+            <span class="hint" id="roomSendHint" style="font-size:10.5px;color:var(--muted)">需要带 bili_jct 的 Cookie</span>
+          </div>
+        </div>
+        <div class="card">
+          <h2>最近 120 条 <span id="roomSeq">—</span></h2>
+          <div class="chips" id="roomFilters"></div>
+          <ul class="room-feed" id="roomFeed">
+            <li class="empty">还没有互动。桌宠开着监听后这里会实时滚动。</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="agent" id="view-agent">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">AGENT / LANGGRAPH FLOW</span>
+          <h2>Agent 流程</h2>
+          <p>一次决策拆成观察 / 规划 / 验算 / 执行 / 反思；节点耗时、状态和 token 都写本机 JSONL。</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="agentRun" type="button">跑一轮演示</button>
+          <a href="#telemetry">看决策日志 →</a>
+        </div>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h2>图 <span>LangGraph</span></h2>
+          <div class="agent-map">
+            <span class="agent-node">observe</span><span class="agent-arrow">→</span>
+            <span class="agent-node">plan</span><span class="agent-arrow">→</span>
+            <span class="agent-node">validate</span><span class="agent-arrow">→</span>
+            <span class="agent-node">execute</span><span class="agent-arrow">→</span>
+            <span class="agent-node">reflect</span>
+          </div>
+          <div class="hint" style="line-height:1.8;color:var(--muted)">
+            验算失败会回到 plan 重试，最多 <code>max_attempts</code> 次；执行失败也回到 plan。
+            出牌仍走 <code>tools/act.py</code>，人设和语音仍走原内核。
+          </div>
+          <div class="kv" style="margin-top:12px"><span>最近一次</span><b id="agentStatus">—</b></div>
+          <div class="kv"><span>耗时</span><b id="agentDuration">—</b></div>
+          <div class="kv"><span>Token</span><b id="agentTokens">—</b></div>
+          <div class="kv"><span>轨迹文件</span><b id="agentTracePath">—</b></div>
+        </div>
+        <div class="card">
+          <h2>Token 花费 <span>API 账单</span></h2>
+          <div class="kv"><span>合计</span><b id="tokApiTotal">—</b></div>
+          <div class="kv"><span>输入 / 输出</span><b id="tokApiIO">—</b></div>
+          <div class="kv"><span>LLM 调用</span><b id="tokApiCalls">—</b></div>
+          <div class="kv"><span>来源</span><b id="tokSources">—</b></div>
+          <div class="kv"><span>最近一步</span><b id="tokApiLast">—</b></div>
+          <div class="hint" id="tokApiHint" style="line-height:1.7;color:var(--muted);margin-top:8px">
+            按自动玩 / KOOK / B站训练账本的真实 usage 累计；重试失败的调用也计入。
+          </div>
+          <div class="hint" id="tokKinds" style="font-size:10.5px;color:var(--muted);margin-top:6px">—</div>
+          <ul class="mini-list" id="tokSteps" style="max-height:240px;margin-top:8px">
+            <li>还没有 LLM 调用。</li></ul>
+        </div>
+        <div class="card">
+          <h2>本次节点 <span id="agentRunId">—</span></h2>
+          <ul class="mini-list" id="agentSteps" style="max-height:300px"><li>还没有 Agent 运行。点右上「跑一轮演示」。</li></ul>
+        </div>
+        <div class="card">
+          <h2>最近运行 <span id="agentCount">—</span></h2>
+          <div id="agentRuns"><div class="empty">还没有轨迹。</div></div>
+        </div>
+        <div class="card">
+          <h2>轨迹 <span id="agentTraceCount">—</span></h2>
+          <div class="hint" style="line-height:1.9;color:var(--muted)">
+            看三件事：哪个节点最慢、validate 重试几次、每次 token 多少。改 prompt / 加规则 / 换模型前后，
+            跑同一局面比这三项。轨迹只存摘要，不存完整局面和 API Key。
+          </div>
+          <div class="kv" style="margin-top:12px"><span>运行命令</span><b><code>python main.py agent run --demo</code></b></div>
+          <div class="kv"><span>真实 dry-run</span><b><code>python main.py agent run</code></b></div>
+          <div class="kv"><span>自动玩设置</span><b><a href="#games">去「当前游戏」→</a></b></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="telemetry" id="view-telemetry">
+      <div class="view-head">
+        <div>
+          <span class="eyebrow">TELEMETRY / DECISIONS &amp; LOGS</span>
+          <h2>决策与日志</h2>
+          <p>Token 是按 thought/meme/speech 本地估算，不是 API 账单；决策记录来自每次 add_comment。</p>
+        </div>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h2>Token <span>本地估算</span></h2>
+          <div class="kv"><span>输入</span><b id="tokIn">0</b></div>
+          <div class="kv"><span>输出</span><b id="tokOut">0</b></div>
+          <div class="kv"><span>合计</span><b id="tokTotal">0</b></div>
+          <div class="kv"><span>决策轮次</span><b id="tokCalls">0</b></div>
+          <div class="hint" id="tokHint" style="font-size:10.5px;color:var(--muted);margin-top:6px">按台词字数估算，不是 API 账单。</div>
+        </div>
+
+        <div class="card">
+          <h2>直播链路</h2>
+          <div class="kv"><span>OBS / 弹幕源</span><b id="kClients">—</b></div>
+          <div class="kv"><span>播放状态</span><b id="kPlayback">—</b></div>
+          <div class="kv"><span>配音队列</span><b id="kVoicePending">—</b></div>
+          <div class="kv"><span>最近配音</span><b id="kVoiceLast">—</b></div>
+          <div class="kv"><span>已说 / 已推</span><b id="kCounts">—</b></div>
+          <div class="kv"><span>overlay seq</span><b id="kSeq">—</b></div>
+        </div>
+
+        <div class="card">
+          <h2>决策 <span class="thinking-now" id="thinkingNow">—</span></h2>
+          <ul class="mini-list" id="decisionList"><li>还没有决策记录。</li></ul>
+        </div>
+
+        <div class="card">
+          <h2>运行日志 <span>最近 80 条</span></h2>
+          <ul class="mini-list" id="logList"><li>还没有日志。</li></ul>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>分层</h2>
+        <div class="layers">
+          <div class="layer"><i style="background:var(--gold)"></i><div><b>UI 层</b><br><code>ui/overlay · ui/studio · ui/desktop</code></div></div>
+          <div class="layer"><i style="background:var(--fish)"></i><div><b>源码</b><br><code>src/dafeiyu/{core,cli}</code></div></div>
+          <div class="layer"><i style="background:#c69bff"></i><div><b>性格层</b><br><code>persona/dafeiyu</code></div></div>
+          <div class="layer"><i style="background:#57d38c"></i><div><b>语音层</b><br><code>voice/animal · voice/mambo</code></div></div>
+          <div class="layer"><i style="background:#ff9f6a"></i><div><b>游戏列表</b><br><code>games/slay-the-spire-2</code></div></div>
+          <div class="layer"><i style="background:#8b93a7"></i><div><b>游戏包</b><br><code>compat/ · corpus/</code></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+
+<footer>
+  <span>运行：<code>python main.py studio</code></span>
+  <span>桌宠：<code>python main.py</code></span>
+  <span>自检：<code>python main.py doctor</code></span>
+  <span id="rootHint"></span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => (
+  {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let DATA = null;
+let BUSY = false;
+
+function toast(msg, err){
+  const el = $("#toast");
+  el.textContent = msg;
+  el.className = "toast show" + (err ? " err" : "");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = "toast"; }, 3800);
+}
+
+function dotFor(ok, warnOnly){
+  return `<i class="dot ${ok ? "ok" : (warnOnly ? "warn" : "bad")}"></i>`;
+}
+
+function pill(html){ return `<span class="pill">${html}</span>`; }
+
+function renderPills(){
+  const d = DATA;
+  if(!d){ $("#pills").innerHTML = pill(`${dotFor(false)}连接中…`); return; }
+  const ov = d.overlay || {};
+  const voice = d.voice || {};
+  const mambo = (voice.voices || {}).mambo || {};
+  const animal = (voice.voices || {}).animal || {};
+  const current = (d.games || []).find(g => g.id === String(d.config?.game || "")) || {};
+  const rec = d.recording || {};
+  const recOn = !!(rec.recording || rec.obs?.recording);
+  $("#pills").innerHTML = [
+    pill(`${dotFor((ov.clients || 0) > 0)}OBS <b>${ov.clients || 0}</b> 路`),
+    pill(`${dotFor(recOn, true)}录像<b>${recOn ? "进行中" : (rec.obs?.ok ? "待机" : "未连接")}</b>`),
+    pill(`${dotFor(!!mambo.available, true)}曼波<b>${mambo.available ? "在线" : "离线"}</b>`),
+    pill(`${dotFor(true)}动物语<b>就绪</b>`),
+    pill(`${dotFor(!!current.connected, true)}${esc(current.name || "游戏")}<b>${current.connected ? "在线" : "未连接"}</b>`),
+    pill(`${dotFor(true)}内核 <b>v${esc(d.product?.version || "—")}</b>`),
+  ].join("");
+}
+
+function renderPersona(){
+  const p = DATA?.persona || {};
+  const style = p.style || {};
+  $("#personaId").textContent = p.id || "—";
+  $("#pName").textContent = p.name || "雷霆小肥鱼";
+  $("#pTitle").textContent = p.title || "";
+  $("#pTagline").textContent = p.tagline || "";
+  $("#pTraits").innerHTML = (p.traits || []).map(t => `<li>${esc(t)}</li>`).join("");
+  $("#pStyle").innerHTML = [
+    [style.max_len ?? 60, "字上限"],
+    [style.min_gap ?? 1.2, "秒间隔"],
+    [style.max_quips_per_10min ?? 2, "招牌/10min"],
+  ].map(([v, k]) => `<div><b>${esc(v)}</b><small>${k}</small></div>`).join("");
+  $("#pQuips").innerHTML = (p.quips || []).slice(0, 6)
+    .map(q => `<span class="chip" data-quip="${esc(q)}">${esc(q)}</span>`).join("");
+}
+
+let PERSONA = null;
+
+async function loadPersona(){
+  try{
+    const r = await fetch("/api/persona", {cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    PERSONA = await r.json();
+    const sel = $("#pEditFile");
+    const cur = sel.value;
+    sel.innerHTML = (PERSONA.files || []).map(f =>
+      `<option value="${esc(f.name)}">${esc(f.label)} · ${esc(f.path)}</option>`).join("");
+    if(cur && (PERSONA.files || []).some(f => f.name === cur)) sel.value = cur;
+    loadPersonaFile();
+    renderTraining(PERSONA.training);
+  }catch(e){
+    toast("读取人设失败：" + e.message, true);
+  }
+}
+
+let TRAINING = [];
+let TRAIN_PAGE = 1;
+let TRAIN_PER = 10;
+let TRAIN_EDIT_ID = null;
+let TRAIN_FILTER = "uncompressed";
+let TRAIN_FILTER_TOUCHED = false;
+let TRAIN_COMPRESSION = {exists: false, text: ""};
+let TRAIN_DIGEST_OPEN = false;
+
+function trainFilter(name){
+  if(name !== "uncompressed" && name !== "compressed") return;
+  TRAIN_FILTER_TOUCHED = true;
+  TRAIN_FILTER = name;
+  TRAIN_PAGE = 1;
+  if(name === "compressed" && TRAIN_COMPRESSION.text) TRAIN_DIGEST_OPEN = true;
+  else TRAIN_DIGEST_OPEN = false;
+  syncTrainTabs();
+  syncTrainDigest();
+  renderTrainingPage();
+}
+
+function syncTrainTabs(){
+  document.querySelectorAll("[data-train-filter]").forEach(btn => {
+    btn.classList.toggle("on", btn.dataset.trainFilter === TRAIN_FILTER);
+  });
+}
+
+function syncTrainDigest(){
+  const c = TRAIN_COMPRESSION || {};
+  const text = String(c.text || "");
+  const has = !!text;
+  const btn = $("#trainDigestToggle");
+  const panel = $("#trainDigestPanel");
+  const meta = $("#trainDigestMeta");
+  const pre = $("#trainDigestText");
+  if(btn){
+    btn.disabled = !has;
+    btn.textContent = TRAIN_DIGEST_OPEN ? "收起压缩文本" : "查看压缩文本";
+  }
+  if(meta){
+    meta.textContent = has
+      ? `${Number(c.source_count || 0)} 条 · ${Number(c.chars || text.length)} 字`
+        + (c.updated_at ? ` · ${c.updated_at}` : "")
+      : "还没有压缩记忆";
+  }
+  if(pre) pre.textContent = text;
+  if(!has) TRAIN_DIGEST_OPEN = false;
+  if(panel) panel.hidden = !(has && TRAIN_DIGEST_OPEN);
+}
+
+function toggleTrainDigest(){
+  if(!(TRAIN_COMPRESSION && TRAIN_COMPRESSION.text)) return;
+  TRAIN_DIGEST_OPEN = !TRAIN_DIGEST_OPEN;
+  syncTrainDigest();
+}
+
+function trainingStatus(e){
+  const comment = e.comment_status === "posted" ? "已发评论"
+    : e.comment_status === "failed" ? "评论失败"
+    : e.comment_status === "skipped" ? "评论跳过" : "未评论";
+  const like = e.like_status === "liked" ? "已点赞"
+    : e.like_status === "failed" ? "点赞失败"
+    : e.like_status === "skipped" ? "未点赞" : "";
+  return {comment, like};
+}
+
+function renderTraining(training){
+  TRAINING = (training && training.entries) || [];
+  TRAIN_COMPRESSION = (training && training.compression) || {exists: false, text: ""};
+  const compressed = TRAINING.filter(e => !!e.compressed).length;
+  const uncompressed = TRAINING.length - compressed;
+  // 默认看未压缩；全部压完时自动切到已压缩，并展开压缩文本。
+  if(!TRAIN_FILTER_TOUCHED && TRAINING.length){
+    TRAIN_FILTER = uncompressed ? "uncompressed" : "compressed";
+    if(TRAIN_FILTER === "compressed" && TRAIN_COMPRESSION.text) TRAIN_DIGEST_OPEN = true;
+  }
+  const count = $("#trainCount");
+  const nav = $("#navTraining");
+  const enabled = TRAINING.filter(e => e.enabled !== false).length;
+  if(count) count.textContent = `${TRAINING.length} 条 · ${enabled} 条启用 · ${compressed} 条已压缩`;
+  if(nav) nav.textContent = String(TRAINING.length);
+  const un = $("#trainUncompressed"), cp = $("#trainCompressed");
+  if(un) un.textContent = String(uncompressed);
+  if(cp) cp.textContent = String(compressed);
+  syncTrainTabs();
+  syncTrainDigest();
+  if(TRAIN_EDIT_ID && !TRAINING.some(e => e.id === TRAIN_EDIT_ID)) closeTrainingEditor();
+  renderTrainingPage();
+}
+
+function renderTrainingPage(){
+  const list = $("#trainList");
+  if(!list) return;
+  const rows = TRAINING.slice().reverse()
+    .filter(e => TRAIN_FILTER === "compressed" ? !!e.compressed : !e.compressed);
+  const pages = Math.max(1, Math.ceil(rows.length / TRAIN_PER));
+  TRAIN_PAGE = Math.min(Math.max(1, TRAIN_PAGE), pages);
+  const start = (TRAIN_PAGE - 1) * TRAIN_PER;
+  const shown = rows.slice(start, start + TRAIN_PER);
+  if(!TRAINING.length){
+    list.innerHTML = '<div class="hint" style="padding:8px 0">还没有训练记忆。去设置页「运行 → B站摸鱼训练」启动一次，或点「快速扫收藏夹」。</div>';
+    $("#trainPager").innerHTML = "";
+    return;
+  }
+  if(!rows.length){
+    const hint = TRAIN_FILTER === "uncompressed"
+      ? `没有未压缩记忆；全部 ${TRAINING.length} 条都已压进长期画像。切到「已压缩」查看。`
+      : "还没有已压缩记忆；先点「压缩记忆」生成长期画像。";
+    list.innerHTML = `<div class="hint" style="padding:8px 0">${esc(hint)}</div>`;
+    $("#trainPager").innerHTML = "";
+    return;
+  }
+  list.innerHTML = shown.map((e) => {
+    const status = trainingStatus(e);
+    const title = esc(e.title || e.bvid || "视频");
+    const link = e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener">${title}</a>` : title;
+    const rawSummary = String(e.summary || "");
+    const summary = esc(rawSummary.slice(0, 220)) + (rawSummary.length > 220 ? "…" : "");
+    const compressTag = e.compressed
+      ? '<span class="chip on">已压缩</span>'
+      : '<span class="chip">未压缩</span>';
+    return `<div class="train-row" data-train-id="${esc(e.id)}">
+      <div class="train-row-head">
+        <b>${link}</b>
+        <span class="hint">${esc(e.up || "")}${e.created_at ? " · " + esc(String(e.created_at).slice(0,16)) : ""}${e.bvid ? " · " + esc(e.bvid) : ""}</span>
+        ${compressTag}
+        ${e.source === "favorites" ? '<span class="chip">收藏夹</span>' : ""}
+        ${e.source === "shared" ? '<span class="chip">聊天分享</span>' : ""}
+        <span class="chip">${esc(status.comment)}</span>${status.like ? `<span class="chip">${esc(status.like)}</span>` : ""}
+        <div class="train-actions">
+          <label class="hint"><input type="checkbox" ${e.enabled !== false ? "checked" : ""} onchange="setTrainingEnabled('${esc(e.id)}', this.checked)"> 启用</label>
+          <button class="btn ghost" type="button" onclick="editTraining('${esc(e.id)}')">查看 / 编辑</button>
+          <button class="btn ghost" type="button" onclick="deleteTraining('${esc(e.id)}')">删除</button>
+        </div>
+      </div>
+      <div class="train-summary">${summary}</div>
+      ${e.comment ? `<div class="hint">评论：${esc(e.comment)}${e.comment_error ? "（" + esc(e.comment_error) + "）" : ""}</div>` : ""}
+    </div>`;
+  }).join("");
+  $("#trainPager").innerHTML = `
+    <button type="button" ${TRAIN_PAGE <= 1 ? "disabled" : ""} onclick="trainPage(-1)">上一页</button>
+    <span>第 ${TRAIN_PAGE} / ${pages} 页 · 共 ${rows.length} 条</span>
+    <button type="button" ${TRAIN_PAGE >= pages ? "disabled" : ""} onclick="trainPage(1)">下一页</button>`;
+}
+
+function trainPage(delta){
+  TRAIN_PAGE += Number(delta || 0);
+  renderTrainingPage();
+}
+
+let THOUGHT_PAGE = 1;
+let THOUGHT_PER = 10;
+let THOUGHT_SOURCE = "";
+let THOUGHT_DATA = null;
+let THOUGHT_DETAIL_ID = "";
+let THOUGHT_BUSY = false;
+let CURRENT_VIEW = "basic";
+
+function thoughtTime(ts){
+  if(!ts) return "—";
+  return new Date(ts * 1000).toLocaleString("zh-CN", {hour12:false});
+}
+
+function renderThoughtSources(){
+  const sel = $("#thoughtSource");
+  if(!sel) return;
+  const current = THOUGHT_SOURCE;
+  const rows = THOUGHT_DATA?.sources || [];
+  sel.innerHTML = '<option value="">全部</option>' + rows.map(row =>
+    `<option value="${esc(row.source)}">${esc(row.source)} · ${Number(row.count || 0)}</option>`
+  ).join("");
+  sel.value = rows.some(row => row.source === current) ? current : "";
+  THOUGHT_SOURCE = sel.value;
+}
+
+function renderThoughts(){
+  const list = $("#thoughtList");
+  if(!list) return;
+  const data = THOUGHT_DATA || {};
+  const stats = data.stats || {};
+  const total = Number(stats.total || 0);
+  const count = $("#thoughtTraceCount");
+  if(count) count.textContent = total
+    ? `共 ${total} 轮 · thought ${Number(stats.thought || 0)} · 推理 ${Number(stats.reasoning || 0)}`
+    : "共 0 轮";
+  const nav = $("#navThoughts");
+  if(nav) nav.textContent = total ? String(total) : "—";
+  renderThoughtSources();
+  const rows = data.items || [];
+  if(!rows.length){
+    const src = THOUGHT_SOURCE ? `「${esc(THOUGHT_SOURCE)}」` : "";
+    list.innerHTML = `<div class="hint" style="padding:10px 0">${src
+      ? `没有${src}的轨迹。` : "还没有模型对话。KOOK 收到消息后这里会出现第一轮。"}</div>`;
+    $("#thoughtPager").innerHTML = "";
+    return;
+  }
+  list.innerHTML = rows.map(row => {
+    const status = row.ok ? "" : '<span class="thought-bad">失败</span>';
+    const think = row.has_thought
+      ? `<div class="mini-label">回复前的 thought</div><div class="thought-text think">${esc(row.thought)}</div>`
+      : row.has_reasoning
+        ? `<div class="mini-label">模型推理 reasoning_content</div><div class="thought-text think">${esc(row.reasoning)}</div>`
+        : `<div class="mini-label">思考</div><div class="thought-empty">本轮没留思考；展开可看她实际拿到的人设、记忆和最近对话。</div>`;
+    const trigger = row.preview
+      ? `<div class="mini-label">这轮触发</div><div class="thought-text">${esc(row.preview)}</div>`
+      : "";
+    const reply = row.reply
+      ? `<div class="mini-label">最终回复</div><div class="thought-text reply">${esc(row.reply)}</div>`
+      : "";
+    const err = row.error
+      ? `<div class="mini-label">错误</div><div class="thought-text" style="color:#ff9b9b">${esc(row.error)}</div>`
+      : "";
+    return `<div class="thought-row ${row.has_thought || row.has_reasoning ? "hot" : ""}">
+      <div class="thought-head">
+        <span class="thought-source">${esc(row.source)}</span>
+        <span>${esc(thoughtTime(row.at))}</span>
+        <span>${esc(row.model || "—")}</span>
+        <span>${Number(row.total || 0)} tok</span>
+        <span>${Number(row.ms || 0)}ms</span>
+        <span>${Number(row.message_count || 0)} 条上下文</span>
+        ${status}
+        ${row.id ? `<button class="btn ghost sm" type="button" style="margin-left:auto"
+          onclick="openThought('${esc(row.id)}')">完整上下文</button>` : ""}
+      </div>
+      ${think}${trigger}${reply}${err}
+    </div>`;
+  }).join("");
+  $("#thoughtPager").innerHTML = `
+    <button type="button" ${Number(data.page || 1) <= 1 ? "disabled" : ""} onclick="thoughtGo(-1)">上一页</button>
+    <span>第 ${Number(data.page || 1)} / ${Number(data.pages || 1)} 页 · 共 ${Number(data.total || 0)} 轮</span>
+    <button type="button" ${Number(data.page || 1) >= Number(data.pages || 1) ? "disabled" : ""} onclick="thoughtGo(1)">下一页</button>`;
+}
+
+async function loadThoughts(page, quiet){
+  if(THOUGHT_BUSY && quiet) return;
+  THOUGHT_BUSY = true;
+  const state = $("#thoughtState");
+  if(state && !quiet) state.textContent = "读取中…";
+  const q = new URLSearchParams({
+    page: String(page || THOUGHT_PAGE || 1),
+    per: String(THOUGHT_PER),
+  });
+  if(THOUGHT_SOURCE) q.set("source", THOUGHT_SOURCE);
+  try{
+    const r = await fetch("/api/llm/traces?" + q.toString(), {cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error || "读取失败");
+    THOUGHT_DATA = data;
+    THOUGHT_PAGE = Number(data.page || 1);
+    renderThoughts();
+    if(state) state.textContent = `更新于 ${new Date().toLocaleTimeString("zh-CN", {hour12:false})}`;
+  }catch(e){
+    if(state) state.textContent = "读取失败：" + e.message;
+    toast("模型轨迹读取失败：" + e.message, true);
+  }finally{
+    THOUGHT_BUSY = false;
+  }
+}
+
+function thoughtFilter(value){
+  THOUGHT_SOURCE = String(value || "");
+  THOUGHT_PAGE = 1;
+  closeThoughtDetail();
+  loadThoughts(1);
+}
+
+function thoughtPerPage(value){
+  THOUGHT_PER = Number(value) || 10;
+  THOUGHT_PAGE = 1;
+  loadThoughts(1);
+}
+
+function thoughtGo(delta){
+  const next = THOUGHT_PAGE + Number(delta || 0);
+  if(next < 1) return;
+  loadThoughts(next);
+}
+
+function renderThoughtDetail(row){
+  const meta = $("#thoughtDetailMeta");
+  if(meta){
+    meta.textContent = `${row.source || "模型对话"} · ${thoughtTime(row.at)} · `
+      + `${row.model || "—"} · ${Number(row.total || 0)} tok · ${Number(row.ms || 0)}ms`
+      + (row.meta?.msg_id ? ` · ${row.meta.msg_id}` : "");
+  }
+  const parts = [];
+  if(row.thought){
+    parts.push(`<div class="thought-block"><div class="mini-label">回复前的 thought</div>
+      <pre>${esc(row.thought)}</pre></div>`);
+  }
+  if(row.reasoning){
+    parts.push(`<div class="thought-block"><div class="mini-label">模型推理 reasoning_content</div>
+      <pre>${esc(row.reasoning)}</pre></div>`);
+  }
+  const msgs = row.messages || [];
+  parts.push(`<div class="thought-block"><div class="mini-label">实际输入 · ${msgs.length} 条</div>`);
+  parts.push(msgs.map(m => `<div class="thought-msg">
+    <div class="thought-msg-head"><b>${esc(m.role || "?")}</b><span>${Number(m.chars || 0)} 字</span></div>
+    <pre>${esc(m.content || "")}</pre>
+  </div>`).join(""));
+  parts.push(`</div>`);
+  if(row.reply){
+    parts.push(`<div class="thought-block"><div class="mini-label">模型原始回复</div>
+      <pre>${esc(row.reply)}</pre></div>`);
+  }
+  if(row.error){
+    parts.push(`<div class="thought-block"><div class="mini-label">错误</div>
+      <pre style="color:#ff9b9b">${esc(row.error)}</pre></div>`);
+  }
+  $("#thoughtDetail").innerHTML = parts.join("");
+  $("#thoughtDetailCard").style.display = "block";
+}
+
+async function openThought(id){
+  if(!id) return;
+  try{
+    const r = await fetch("/api/llm/traces/" + encodeURIComponent(id), {cache:"no-store"});
+    const data = await r.json();
+    if(!r.ok || !data.ok) throw new Error(data.error || "读取失败");
+    THOUGHT_DETAIL_ID = id;
+    renderThoughtDetail(data.trace || {});
+    $("#thoughtDetailCard").scrollIntoView({behavior:"smooth", block:"start"});
+  }catch(e){
+    toast("读取这轮上下文失败：" + e.message, true);
+  }
+}
+
+function closeThoughtDetail(){
+  THOUGHT_DETAIL_ID = "";
+  const card = $("#thoughtDetailCard");
+  if(card) card.style.display = "none";
+  const body = $("#thoughtDetail");
+  if(body) body.innerHTML = "";
+}
+
+function trainPerPage(value){
+  TRAIN_PER = Math.max(1, Number(value || 10));
+  TRAIN_PAGE = 1;
+  renderTrainingPage();
+}
+
+function editTraining(id){
+  const e = TRAINING.find(x => x.id === id);
+  if(!e) return;
+  TRAIN_EDIT_ID = id;
+  const card = $("#trainEditorCard");
+  $("#trainEditorId").textContent = e.bvid || e.id;
+  $("#trainEditTitle").value = e.title || "";
+  $("#trainEditUp").value = e.up || "";
+  $("#trainEditUrl").value = e.url || "";
+  $("#trainEditDuration").value = Number(e.duration_s || 0);
+  $("#trainEditSummary").value = e.summary || "";
+  $("#trainEditComment").value = e.comment || "";
+  $("#trainEditEnabled").checked = e.enabled !== false;
+  const status = trainingStatus(e);
+  $("#trainEditMeta").textContent =
+    `${e.bvid || e.id} · 学习于 ${e.created_at ? String(e.created_at).slice(0,16) : "未知"}`
+    + ` · ${status.comment}${status.like ? " · " + status.like : ""}`
+    + `${e.comment_error ? " · " + e.comment_error : ""}`
+    + `${e.compressed ? " · 已计入压缩画像；改动需重新压缩才生效" : ""}`;
+  $("#trainEditState").textContent = "";
+  card.style.display = "block";
+  card.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function closeTrainingEditor(){
+  TRAIN_EDIT_ID = null;
+  const card = $("#trainEditorCard");
+  if(card) card.style.display = "none";
+}
+
+function setTrainState(text){
+  const main = $("#trainState");
+  const edit = $("#trainEditState");
+  if(main) main.textContent = text;
+  if(edit) edit.textContent = text;
+}
+
+async function saveTrainingEditor(){
+  if(!TRAIN_EDIT_ID){ toast("先选一条记忆"); return; }
+  const entry = TRAINING.find(x => x.id === TRAIN_EDIT_ID);
+  if(!entry){ toast("这条记忆已经不在了", true); return; }
+  const title = $("#trainEditTitle").value.trim();
+  if(!title){ toast("标题不能为空", true); return; }
+  const summary = $("#trainEditSummary").value.trim();
+  if(!summary){ toast("摘要不能为空；这条记忆靠它进人格", true); return; }
+  const updated = {
+    ...entry,
+    title,
+    up: $("#trainEditUp").value.trim(),
+    url: $("#trainEditUrl").value.trim(),
+    duration_s: Math.max(0, Number($("#trainEditDuration").value || 0) || 0),
+    summary: $("#trainEditSummary").value.trim(),
+    comment: $("#trainEditComment").value.trim(),
+    enabled: $("#trainEditEnabled").checked,
+  };
+  const entries = TRAINING.map(x => x.id === updated.id ? updated : x);
+  const ok = await saveTrainingEntries(entries);
+  if(ok) closeTrainingEditor();
+}
+
+async function saveTrainingEntries(entries){
+  setTrainState("保存中…");
+  try{
+    const r = await fetch("/api/persona", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({training: {entries}}),
+    });
+    const d = await r.json();
+    if(!r.ok || !d.ok) throw new Error(d.error || ("HTTP " + r.status));
+    PERSONA = PERSONA || {};
+    PERSONA.training = d.training;
+    renderTraining(d.training);
+    setTrainState(d.message || "已保存");
+    toast(d.message || "训练记忆已保存");
+    return true;
+  }catch(e){
+    setTrainState("");
+    toast("保存失败：" + e.message, true);
+    return false;
+  }
+}
+
+function setTrainingEnabled(id, enabled){
+  const entries = TRAINING.map(x => x.id === id ? {...x, enabled: !!enabled} : x);
+  saveTrainingEntries(entries);
+}
+
+function deleteTrainingEditor(){
+  if(TRAIN_EDIT_ID) deleteTraining(TRAIN_EDIT_ID);
+}
+
+function deleteTraining(id){
+  if(!id) return;
+  if(!confirm("删除这条训练记忆？删除后人格里不再引用。")) return;
+  if(TRAIN_EDIT_ID === id) closeTrainingEditor();
+  saveTrainingEntries(TRAINING.filter(x => x.id !== id));
+}
+
+function loadPersonaFile(){
+  const name = $("#pEditFile").value;
+  if(!PERSONA || !name) return;
+  const text = (PERSONA.texts || {})[name] || "";
+  $("#pEditText").value = text;
+  const f = (PERSONA.files || []).find(x => x.name === name) || {};
+  $("#pEditHint").innerHTML = `文件 <b>${esc(f.path || name)}</b> · `
+    + (f.kind === "json" ? "JSON 会校验" : "纯文本") + ` · ${text.length} 字`;
+  $("#pEditState").textContent = "";
+}
+
+async function savePersonaFile(){
+  const name = $("#pEditFile").value;
+  if(!name){ toast("先选一个文件"); return; }
+  const text = $("#pEditText").value;
+  $("#pEditState").textContent = "保存中…";
+  try{
+    const r = await fetch("/api/persona", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({name, text}),
+    });
+    const d = await r.json();
+    if(!r.ok || !d.ok) throw new Error(d.error || ("HTTP " + r.status));
+    toast(d.message || "已保存");
+    $("#pEditState").textContent = d.message || "已保存";
+    await loadPersona();
+    if(name === "card.json" && d.persona){
+      DATA.persona = d.persona;
+      renderPersona();
+    }
+  }catch(e){
+    $("#pEditState").textContent = "";
+    toast("保存失败：" + e.message, true);
+  }
+}
+
+async function reloadPersona(){
+  try{
+    const r = await fetch("/api/persona", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({reload: true}),
+    });
+    const d = await r.json();
+    if(!r.ok || !d.ok) throw new Error(d.error || ("HTTP " + r.status));
+    toast(d.message || "人设已重载");
+    await refresh();
+    await loadPersona();
+  }catch(e){
+    toast("重载失败：" + e.message, true);
+  }
+}
+
+let GAME_DOC = null;
+let GAME_SEL = "";
+
+async function openGame(gid){
+  GAME_SEL = gid || "";
+  if(!GAME_SEL) return;
+  $("#gameDetailCard").style.display = "";
+  $("#gameDetailTitle").textContent = "游戏详情";
+  $("#gameDetailMeta").textContent = GAME_SEL;
+  $("#gEditState").textContent = "加载中…";
+  try{
+    const r = await fetch("/api/skill?game=" + encodeURIComponent(GAME_SEL), {cache:"no-store"});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error || ("HTTP " + r.status));
+    GAME_DOC = d;
+    const info = d.info || {};
+    const m = info.manifest || {};
+    $("#gameDetailTitle").textContent = info.name || GAME_SEL;
+    $("#gameDetailMeta").textContent = `${m.version || info.version || ""} · ${m.platform || info.platform || ""}`;
+    $("#gameDetailDesc").textContent = m.notes || m.description || info.description || "";
+    const groups = [["strategy", "决策手册"], ["caster", "主播稿 / 人设"], ["notes", "资料笔记"]];
+    const sel = $("#gEditFile");
+    sel.innerHTML = groups.map(([g, label]) => {
+      const items = (d.files || []).filter(f => (f.group || "strategy") === g);
+      if(!items.length) return "";
+      return `<optgroup label="${esc(label)}">` + items.map(f =>
+        `<option value="${esc(f.name)}">${esc(f.label || f.name)}</option>`).join("") + `</optgroup>`;
+    }).join("");
+    renderGameMaterials(d.materials || {});
+    loadGameFile();
+    $("#gEditState").textContent = "";
+  }catch(e){
+    $("#gEditState").textContent = "";
+    $("#gEditHint").textContent = "加载失败：" + e.message;
+  }
+}
+
+function loadGameFile(){
+  const name = $("#gEditFile").value;
+  if(!GAME_DOC || !name) return;
+  const text = (GAME_DOC.texts || {})[name] || "";
+  $("#gEditText").value = text;
+  renderGameHint(name, text);
+  $("#gEditState").textContent = "";
+}
+
+function renderGameHint(name, text){
+  const bytes = new TextEncoder().encode(text).length;
+  const lines = text ? text.split("\n").length : 0;
+  const soft = bytes > 15000
+    ? ` · <span style="color:var(--gold)">超过旧建议值 15000B（不影响保存）</span>` : "";
+  $("#gEditHint").innerHTML = `<b>${esc(name)}</b> · ${bytes} 字节 · ${lines} 行 · 不限字数${soft}`;
+}
+
+async function saveGameFile(){
+  const name = $("#gEditFile").value;
+  if(!GAME_SEL || !name){ toast("先选一篇文档"); return; }
+  const text = $("#gEditText").value;
+  $("#gEditState").textContent = "保存中…";
+  try{
+    const r = await fetch("/api/skill", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({game: GAME_SEL, name, text}),
+    });
+    const d = await r.json();
+    if(!r.ok || !d.ok) throw new Error(d.error || ("HTTP " + r.status));
+    toast(d.message || "已保存");
+    $("#gEditState").textContent = d.message || "已保存";
+    await openGame(GAME_SEL);
+  }catch(e){
+    $("#gEditState").textContent = "";
+    toast("保存失败：" + e.message, true);
+  }
+}
+
+function renderGameMaterials(mats){
+  const counts = mats.counts || {};
+  const names = {cards: "卡牌", relics: "遗物", monsters: "敌人", potions: "药水",
+                 events: "事件", encounters: "遭遇", powers: "能力", characters: "角色"};
+  const parts = Object.keys(names).filter(k => counts[k] != null)
+    .map(k => `${names[k]} ${counts[k]}`);
+  $("#gMatCounts").textContent = parts.length
+    ? "资料库：" + parts.join(" · ") + "（原始 JSON 只读）" : "这个游戏没有原始资料库。";
+  const files = mats.files || [];
+  $("#gMatFiles").innerHTML = files.slice(0, 24).map(f =>
+    `<span class="chip" data-mat="${esc(f.name)}" onclick="previewMaterial('${esc(f.name)}')">${esc(f.label || f.name)} · ${Math.round((f.bytes || 0) / 1024)}KB</span>`).join("");
+}
+
+async function previewMaterial(rel){
+  if(!GAME_SEL) return;
+  $("#gMatPreview").textContent = "加载中…";
+  try{
+    const r = await fetch(`/api/skill?game=${encodeURIComponent(GAME_SEL)}&material=${encodeURIComponent(rel)}`,
+                          {cache:"no-store"});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error || ("HTTP " + r.status));
+    $("#gMatPreview").textContent = d.text + (d.truncated ? "\n…（已截断，只显示前 20KB）" : "");
+  }catch(e){
+    $("#gMatPreview").textContent = "加载失败：" + e.message;
+  }
+}
+
+function renderVoice(){
+  const v = DATA?.voice || {};
+  const voices = v.voices || {};
+  $("#voiceActive").textContent = v.active ? `当前 ${v.active}` : "—";
+  const rows = [
+    ["mambo", "曼波语", "MamboTTS / GPT-SoVITS", "主播本音"],
+    ["animal", "动物语", "内置五声音阶", "永远可用"],
+  ];
+  $("#voiceRows").innerHTML = rows.map(([id, name, engine, note]) => {
+    const info = voices[id] || {};
+    const ok = !!info.available;
+    const extra = id === "mambo"
+      ? (info.url || "")
+      : `音阶 ${(info.scale || []).join(" ")}`;
+    return `<div class="voice-row">
+      <div class="voice-head">${dotFor(ok, true)}<span class="nm">${name}</span>
+        <span class="engine">${esc(engine)}</span></div>
+      <div class="voice-meta"><span>${ok ? "在线" : "离线"}</span><span>·</span>
+        <span>${esc(note)}</span><span>·</span><span>${esc(extra)}</span>
+        <button class="btn sm preview" data-voice="${id}" style="margin-left:auto">试听</button>
+        ${id === "mambo" && !ok ? `<button class="btn sm" data-start-voice="mambo">启动</button>` : ""}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderGames(){
+  const games = DATA?.games || [];
+  const current = String(DATA?.config?.game || "");
+  $("#gameCount").textContent = `${games.length} 个`;
+  $("#gameRows").innerHTML = games.map(g => {
+    const m = g.manifest || {};
+    const compat = m.compat || {};
+    const corpus = m.corpus || {};
+    const badges = [];
+    if (g.id === current) badges.push(`<span class="badge gold">当前</span>`);
+    if (compat.api) badges.push(`<span class="badge">API ${esc(compat.api)}</span>`);
+    if (corpus.db) badges.push(`<span class="badge gold">${esc(corpus.db)}</span>`);
+    if (corpus.tables) badges.push(`<span class="badge">${Object.values(corpus.tables).reduce((a,b)=>a+b,0)} 条资料</span>`);
+    return `<div class="game ${g.id === current ? "current" : ""}" style="cursor:pointer" onclick="openGame('${esc(g.id)}')">
+      <div class="gh">${dotFor(!!g.connected, true)}<span class="gn">${esc(g.name)}</span>
+        <span class="gp">${esc(g.platform || "")}</span></div>
+      <div class="gd">${esc(g.notes || "")}</div>
+      <div class="badges">${badges.join("")}</div>
+    </div>`;
+  }).join("") || `<div class="empty">没有注册游戏。</div>`;
+}
+
+function fmtBiliDuration(value){
+  const s = Math.max(0, Number(value || 0));
+  if(!s) return "—";
+  return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+}
+
+function biliStateLabel(state, running){
+  const labels = {
+    idle: "空闲", selecting: "选片中", playing: "播放中", prefetch: "预取中",
+    between: "准备下一条", stopped: "已停止", missing: "还没有记录",
+    not_b: "不是 B 站模式", error: "读取失败",
+  };
+  const base = labels[state] || state || "—";
+  return running ? base : `${base} · 未启动`;
+}
+
+function renderBiliPlaylist(){
+  const card = $("#biliPlaylistCard");
+  if(!card) return;
+  const isB = String(DATA?.config?.game || "") === "bilibili-hot-commentary";
+  card.style.display = isB ? "" : "none";
+  if(!isB) return;
+
+  const p = DATA?.bilibili_playlist || {};
+  const items = Array.isArray(p.items) ? p.items : [];
+  const browser = p.browser || {};
+  const running = !!DATA?.play?.running;
+  $("#biliPlaylistState").textContent = biliStateLabel(p.state, running);
+  const opened = !!browser.opened;
+  $("#biliRefresh").disabled = !opened;
+  $("#biliClose").disabled = !opened;
+  $("#biliBrowserState").textContent = opened
+    ? `标签页：${browser.title || browser.url || "已打开"}`
+    : (browser.url ? "标签页已关闭（可点播放重开）" : "还没有 B 站标签页");
+  $("#biliPlaylistHint").textContent = !running
+    ? "当前没有在跑 B站云观影。先在「B站云观影」启动自动玩，播放列表才会实时更新。"
+    : (p.state === "stopped"
+      ? "自动玩已停止；播放列表保留最后一版，重新启动后继续。"
+      : "选一个候选 → 播放；新视频会先关旧标签页再开新的，同一个视频则刷新当前标签页。");
+  if(p.error) $("#biliPlaylistHint").textContent = `播放列表读取失败：${p.error}`;
+
+  if(!items.length){
+    $("#biliPlaylist").innerHTML = `<div class="empty">还没有播放列表。B站云观影选到候选后会显示在这里。</div>`;
+    return;
+  }
+  $("#biliPlaylist").innerHTML = items.map((item, i) => {
+    const bvid = String(item.bvid || "");
+    const current = bvid && bvid === String(p.current_bvid || "");
+    const title = item.title || bvid || "未命名视频";
+    const disabled = running ? "" : "disabled";
+    return `<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">
+      <div style="color:var(--muted);font-size:11px;width:22px;text-align:right">${i + 1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${esc(title)} ${current ? `<span class="badge gold">当前</span>` : ""}
+        </div>
+        <div style="color:var(--muted);font-size:10.5px;margin-top:2px">
+          ${esc(item.owner || "—")} · ${fmtBiliDuration(item.duration_s)} · ${esc(bvid)}
+        </div>
+      </div>
+      <button class="btn sm ${current ? "ghost" : ""}" data-bili-play="${esc(bvid)}"
+        ${disabled}>${current ? "刷新" : "播放"}</button>
+      ${current ? `<button class="btn sm ghost" data-bili-close ${opened ? "" : "disabled"}>关闭</button>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function renderBiliCommentSettings(){
+  const card = $("#biliCommentCard");
+  if(!card) return;
+  const isB = String(DATA?.config?.game || "") === "bilibili-hot-commentary";
+  card.style.display = isB ? "" : "none";
+  if(!isB) return;
+  const s = DATA?.bilibili_comment_settings || {};
+  $("#biliCommentEnabled").checked = !!s.enabled;
+  $("#biliCommentMaxDay").value = Number(s.max_per_day ?? 0);
+  $("#biliCommentGap").value = Number(s.min_gap_s ?? 600);
+  $("#biliCommentChars").value = Number(s.max_chars ?? 60);
+  $("#biliCommentHint").textContent = s.can_post
+    ? "已配置登录 Cookie，可以发评论"
+    : (s.cookie_set
+      ? "Cookie 缺少 SESSDATA 或 bili_jct，评论会被跳过"
+      : "未配置登录 Cookie，评论只会生成、不会发到 B 站");
+  renderBiliCommentHistory();
+}
+
+// 已发评论账本：引擎真发成功后写 logs/bilibili_commentary.comments.jsonl。
+// 视频链接/标题/评论内容都是外部文本，渲染前一律 esc()。
+function biliCommentUrl(raw){
+  const url = String(raw || "").trim();
+  return /^https:\/\/www\.bilibili\.com\/video\//.test(url) ? url : "";
+}
+
+function fmtBiliWhen(ts){
+  const n = Number(ts);
+  if(!n) return "—";
+  const d = new Date(n * 1000);
+  const p = (x) => String(x).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function renderBiliCommentHistory(){
+  const box = $("#biliCommentHistory");
+  if(!box) return;
+  const data = DATA?.bilibili_video_comments || {};
+  const items = Array.isArray(data.items) ? data.items : [];
+  const count = Number.isFinite(Number(data.count)) ? Number(data.count) : items.length;
+  $("#biliCommentCount").textContent = `${count} 条`;
+  if(!items.length){
+    box.innerHTML = `<div class="hint" style="color:var(--muted);font-size:11px;padding:6px 0">还没发过视频评论。</div>`;
+    return;
+  }
+  box.innerHTML = items.map((row) => {
+    const url = biliCommentUrl(row.url);
+    const name = row.title || row.bvid || "未命名视频";
+    const head = url
+      ? `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(name)}</a>`
+      : esc(name);
+    const meta = [
+      row.bvid ? esc(row.bvid) : "",
+      row.owner ? esc(row.owner) : "",
+      row.rpid ? `rpid ${esc(row.rpid)}` : "",
+    ].filter(Boolean).join(" · ");
+    return `<div style="padding:8px 0;border-top:1px solid var(--line)">
+      <div style="display:flex;gap:10px;align-items:baseline;justify-content:space-between">
+        <div style="font-size:12.5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${head}</div>
+        <div style="color:var(--muted);font-size:10.5px;white-space:nowrap">${esc(fmtBiliWhen(row.at))}</div>
+      </div>
+      <div style="font-size:12px;line-height:1.7;margin-top:3px;word-break:break-word">${esc(row.text || "")}</div>
+      ${meta ? `<div style="color:var(--muted);font-size:10.5px;margin-top:2px">${meta}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+async function saveBiliCommentSettings(){
+  const btn = $("#biliCommentSave");
+  btn.disabled = true;
+  try{
+    const r = await fetch("/api/bilibili/comment", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({
+        enabled: $("#biliCommentEnabled").checked,
+        max_per_day: Number($("#biliCommentMaxDay").value || 0),
+        min_gap_s: Number($("#biliCommentGap").value || 0),
+        max_chars: Number($("#biliCommentChars").value || 60),
+      }),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || ("HTTP " + r.status));
+    DATA.bilibili_comment_settings = res.settings || {};
+    renderBiliCommentSettings();
+    $("#biliCommentState").textContent = "已保存；重启 B站云观影后生效";
+    toast("视频评论设置已保存");
+  }catch(e){
+    $("#biliCommentState").textContent = "";
+    toast("保存评论设置失败：" + e.message, true);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function renderRight(){
+  const ov = DATA?.overlay || {};
+  const st = DATA?.studio || {};
+  const v = DATA?.voice || {};
+  const rt = (v.runtime || {});
+  $("#kClients").textContent = `${ov.clients || 0} 路`;
+  const pb = ov.playback || {};
+  $("#kPlayback").textContent = pb.speaking ? `说话中 ${pb.remaining ?? 0}s` : "空闲";
+  $("#kVoicePending").textContent = `${rt.pending || 0} 条`;
+  const last = rt.last || {};
+  $("#kVoiceLast").textContent = last.ok ? `${last.voice || ""} ${last.duration || 0}s` : (last.error ? "失败" : "—");
+  $("#kCounts").textContent = `${st.said || 0} / ${st.pushed || 0}`;
+  $("#kSeq").textContent = ov.seq ?? "—";
+  $("#seq").textContent = `seq ${ov.seq ?? "—"}`;
+}
+
+function setIfIdle(id, value){
+  const el = $(id);
+  if(el && document.activeElement !== el) el.value = value ?? "";
+}
+
+function renderConfig(){
+  const cfg = DATA?.config || {};
+  setIfIdle("#cfgVoice", cfg.voice || "mambo");
+  setIfIdle("#cfgMamboDir", cfg.mambo_dir ?? "");
+  setIfIdle("#cfgProvider", cfg.llm_provider ?? "");
+  setIfIdle("#cfgBase", cfg.llm_base_url ?? "");
+  setIfIdle("#cfgModel", cfg.llm_model ?? "");
+  $("#cfgModels").innerHTML = (cfg.llm_models || []).map(m => `<option value="${esc(m)}"></option>`).join("");
+  $("#cfgKeyHint").textContent = cfg.llm_api_key_set ? "已配置（不会回显，留空保持）" : "未配置";
+  $("#cfgKey").placeholder = cfg.llm_api_key_set ? "已配置，留空保持" : "粘贴 API Key";
+  setIfIdle("#cfgBiliRoom", cfg.bilibili_room_id || "");
+  setIfIdle("#cfgBiliCookie", "");
+  if (document.activeElement !== $("#cfgBiliEnabled")) {
+    $("#cfgBiliEnabled").checked = !!cfg.bilibili_enabled;
+  }
+  $("#cfgBiliCookieHint").textContent = cfg.bilibili_cookie_set
+    ? "已保存 Cookie（不会回显，留空保持）" : "匿名不够时再填；只存本机";
+  const bili = DATA?.bilibili || {};
+  $("#cfgBiliHint").textContent = cfg.bilibili_enabled && cfg.bilibili_room_id
+    ? (bili.connected
+      ? `监听中：房间 ${cfg.bilibili_room_id} · 礼物 ${bili.gifts || 0}`
+      : (bili.error ? `连接失败：${bili.error}` : "连接中…"))
+    : "开启后桌宠监听礼物并绕圈";
+
+  const games = cfg.game_options || DATA?.games || [];
+  const sig = games.map(g => `${g.id}:${g.name}`).join("|");
+  if($("#cfgGame").dataset.sig !== sig){
+    $("#cfgGame").innerHTML = games.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
+    $("#cfgGame").dataset.sig = sig;
+  }
+  setIfIdle("#cfgGame", cfg.game || "");
+  const current = games.find(g => g.id === cfg.game) || {};
+  $("#gameHint").textContent = current.name
+    ? `切换只写 config.game，不会重启游戏；启动走 ${current.platform || "game.json 的 launch"}。`
+    : "当前游戏未注册";
+  renderCurrentGame(current);
+  if (GAME_SEL && GAME_SEL !== cfg.game) openGame(cfg.game);
+}
+
+function renderCurrentGame(game){
+  const cfg = DATA?.config || {};
+  const g = game || (DATA?.games || []).find(x => x.id === cfg.game) || {};
+  const play = DATA?.play || {};
+  const rec = DATA?.recording || {};
+  $("#curGameName").textContent = g.name || cfg.game || "未选择游戏";
+  $("#curGameMeta").textContent = [g.platform, g.id, g.notes].filter(Boolean).join(" · ").slice(0, 220) || "—";
+  const badges = [];
+  badges.push(g.connected
+    ? `<span class="badge gold">在线</span>`
+    : `<span class="badge">离线</span>`);
+  if (play.running) badges.push(`<span class="badge gold">本局运行中</span>`);
+  else if (play.error) badges.push(`<span class="badge">异常停手</span>`);
+  else badges.push(`<span class="badge">空闲</span>`);
+  if (rec.recording) badges.push(`<span class="badge gold">录像中</span>`);
+  const policy = rec.policy || {};
+  if (policy.enabled) badges.push(`<span class="badge">自动录像 · ${policy.split === "run" ? "一局一集" : "不分集"}</span>`);
+  $("#curGameBadges").innerHTML = badges.join("");
+}
+
+function renderNav(){
+  const cfg = DATA?.config || {};
+  const v = DATA?.voice || {};
+  const voices = v.voices || {};
+  const game = (cfg.game_options || DATA?.games || []).find(g => g.id === cfg.game) || {};
+  const said = DATA?.studio?.said ?? 0;
+  const apiTokens = Number(DATA?.agent?.tokens?.total || 0);
+  const playTokens = Number(DATA?.play?.tokens_total || 0);
+  const tokens = apiTokens > 0 ? apiTokens : (playTokens > 0 ? playTokens : (DATA?.overlay?.usage?.total ?? 0));
+  $("#navVoice").textContent = cfg.voice === "mambo"
+    ? (voices.mambo?.available ? "曼波在线" : "曼波离线")
+    : (cfg.voice === "off" ? "静音" : "动物语");
+  $("#navGame").textContent = game.name || cfg.game || "—";
+  $("#navGameTip").textContent = game.name || cfg.game || "—";
+  const rec = DATA?.recording || {};
+  $("#sideRec").textContent = rec.recording
+    ? `录像中${rec.session?.kind === "run" ? " · 分集" : ""}`
+    : (rec.obs?.ok ? "待机" : "未连接");
+  $("#navPersona").textContent = DATA?.persona?.id || "—";
+  $("#navSaid").textContent = `${said} 句`;
+  const roomCount = (DATA?.bilibili?.events || []).length;
+  $("#navRoom").textContent = roomCount ? `${roomCount} 条` : "—";
+  $("#navTokens").textContent = `${tokens} tok`;
+  $("#sideVersion").textContent = `内核 v${DATA?.product?.version || "—"} · ${DATA?.product?.codename || ""}`;
+}
+
+function renderTelemetry(){
+  const ov = DATA?.overlay || {};
+  const u = ov.usage || {};
+  $("#tokIn").textContent = u.input ?? 0;
+  $("#tokOut").textContent = u.output ?? 0;
+  $("#tokTotal").textContent = u.total ?? 0;
+  $("#tokCalls").textContent = u.calls ?? 0;
+  $("#tokHint").textContent = u.calls ? `本地估算 · ${u.calls} 轮，不是 API 账单` : "按台词字数估算，不是 API 账单";
+
+  const th = ov.thinking || {};
+  const play = DATA?.play || {};
+  const idleText = play.running && play.idle_text ? play.idle_text : "吃饭ing";
+  $("#thinkingNow").textContent = th.on ? (th.note ? `思考ing · ${th.note}` : "思考ing") : idleText;
+
+  const decisions = (ov.decisions || []).slice().reverse();
+  $("#decisionList").innerHTML = decisions.length ? decisions.slice(0, 20).map(d => {
+    const t = new Date((d.ts || 0) * 1000).toLocaleTimeString("zh-CN", {hour12:false});
+    const use = d.usage || {};
+    const thought = d.thought ? `<div>${esc(d.thought)}</div>` : "";
+    const said = d.speech ? `<div class="t">说：${esc(d.speech)}</div>` : "";
+    return `<li>${thought}${said}<div class="t">#${d.id} · ${t} · ${esc(d.tag || "思路")} · ${use.total ?? 0} tok</div></li>`;
+  }).join("") : `<li>还没有决策记录。</li>`;
+
+  const logs = (ov.logs || []).slice().reverse();
+  $("#logList").innerHTML = logs.length ? logs.slice(0, 40).map(l => {
+    const t = new Date((l.ts || 0) * 1000).toLocaleTimeString("zh-CN", {hour12:false});
+    return `<li><div>${esc(l.msg || "")}</div><div class="t">${t} · ${esc(l.level || "info")}</div></li>`;
+  }).join("") : `<li>还没有日志。</li>`;
+}
+
+function renderAgent(){
+  const a = DATA?.agent || {};
+  const latest = a.latest || {};
+  const steps = latest.steps || [];
+  const status = latest.status || "";
+  const cls = status === "ok" ? "agent-step-ok" : (status === "error" ? "agent-step-error" : "");
+  $("#agentStatus").innerHTML = status ? `<span class="${cls}">${esc(status)}</span>` : "—";
+  $("#agentDuration").textContent = latest.duration_ms != null ? `${latest.duration_ms} ms` : "—";
+  $("#agentTokens").textContent = latest.tokens ? `${latest.tokens.total || 0} tok` : "—";
+  $("#agentTracePath").textContent = a.trace || "logs/agent_trace.jsonl";
+  $("#agentRunId").textContent = latest.id || "—";
+  $("#agentCount").textContent = `${a.count || 0} 次`;
+  $("#agentTraceCount").textContent = `${a.count || 0} 条（最近 ${(a.runs || []).length} 次）`;
+  $("#agentSteps").innerHTML = steps.length ? steps.map(s => {
+    const ok = s.status === "ok";
+    return `<li><div><span class="${ok ? "agent-step-ok" : "agent-step-error"}">${esc(s.node)}</span>
+      <span class="t"> · ${s.duration_ms || 0} ms · 第 ${s.attempt || 1} 次</span></div>
+      <div>${esc(s.summary || s.error || "")}</div></li>`;
+  }).join("") : `<li>还没有 Agent 运行。点右上「跑一轮演示」。</li>`;
+  const runs = a.runs || [];
+  $("#agentRuns").innerHTML = runs.length ? runs.slice(0, 10).map(r => {
+    const ok = r.status === "ok";
+    const t = new Date((r.started_at || 0) * 1000).toLocaleTimeString("zh-CN", {hour12:false});
+    return `<div class="agent-run">
+      <span class="id">${esc(r.id)}</span>
+      <span class="goal">${esc(r.goal || "")}</span>
+      <span class="${ok ? "agent-step-ok" : "agent-step-error"}">${esc(r.status)}</span>
+      <span class="t">${r.duration_ms || 0}ms · ${t}</span></div>`;
+  }).join("") : `<div class="empty">还没有轨迹。</div>`;
+  $("#navAgent").textContent = status ? `${latest.duration_ms || 0}ms` : "—";
+}
+
+function renderRecording(){
+  const rec = DATA?.recording || {};
+  const obs = rec.obs || {};
+  const policy = rec.policy || {};
+  const script = rec.script || {};
+  const recording = !!(rec.recording || obs.recording);
+  const orb = $("#recOrb");
+  orb.className = "rec-orb " + (!obs.ok ? "" : (recording ? "on" : "ok"));
+  $("#recState").textContent = !obs.ok ? "OBS 离线" : (recording ? "录像中" : "待机");
+  $("#recTitle").textContent = !obs.ok
+    ? "OBS 未连接"
+    : (recording ? "正在录像" : "OBS 已连接");
+  $("#recSub").textContent = !obs.ok
+    ? (obs.message || "打开 OBS 并开启 WebSocket 后刷新")
+    : (recording
+      ? (rec.obs?.output_path || rec.session?.path || "已开始录制")
+      : (policy.enabled ? "自动录像已开启，开局/开播时检查脚本并开录" : "本游戏默认不自动录像，可手动开始"));
+  if (document.activeElement !== $("#recMaster")) $("#recMaster").checked = rec.master !== false;
+  if (document.activeElement !== $("#recEnabled")) $("#recEnabled").checked = !!policy.enabled;
+  if (document.activeElement !== $("#recSplit")) $("#recSplit").value = policy.split === "none" ? "none" : "run";
+  $("#recScript").textContent = script.path || "—";
+  $("#recScriptState").textContent = script.exists ? "已存在" : "未创建";
+  $("#recScriptState").className = "badge " + (script.exists ? "gold" : "");
+  const splitLabel = policy.split === "none" ? "不分集" : "一局一集";
+  $("#recHint").textContent = !obs.ok
+    ? (obs.message || "先打开 OBS；保存策略不依赖 OBS。")
+    : `当前策略：${policy.enabled ? "自动" : "手动"} · ${splitLabel}；开启时会先检查脚本，没有就创建。`;
+  const btn = $("#recToggle");
+  btn.textContent = recording ? "停止录像" : "开始录像";
+  btn.className = "btn " + (recording ? "ghost" : "");
+}
+
+// 开局设置：选项由当前游戏 game.json 的 start 块声明（角色/难度…），
+// 核心只按声明清洗并写 config.json；这里只负责渲染和提交，不写死任何游戏。
+function renderStartOptions(){
+  const card = $("#startOptionsCard");
+  if(!card) return;
+  const data = DATA?.game_start || {};
+  const spec = data.spec || {};
+  const options = Array.isArray(spec.options) ? spec.options : [];
+  if(!options.length){ card.style.display = "none"; return; }
+  card.style.display = "";
+  const values = data.values || {};
+  const gid = String(data.game || DATA?.config?.game || "");
+  $("#startOptionsMeta").textContent = gid || "—";
+  $("#startOptionsHint").textContent = spec.note || "保存后，下一局开新局时生效。";
+  $("#startOptionsFields").innerHTML = options.map((opt) => {
+    const key = String(opt.key || "");
+    const label = esc(opt.label || key);
+    const value = values[key];
+    const hint = opt.hint
+      ? `<div class="hint" style="color:var(--muted);font-size:10.5px;margin-top:3px">${esc(opt.hint)}</div>`
+      : "";
+    if((opt.type || (opt.choices ? "choice" : "")) === "choice"){
+      const rows = (opt.choices || []).map((c) => {
+        const v = String(c && c.value !== undefined ? c.value : c);
+        const text = c && c.label ? String(c.label) : v;
+        return `<option value="${esc(v)}" ${v === String(value) ? "selected" : ""}>${esc(text)}</option>`;
+      }).join("");
+      return `<div class="field"><label>${label}</label>
+        <select data-start-key="${esc(key)}">${rows}</select>${hint}</div>`;
+    }
+    if(opt.type === "int"){
+      return `<div class="field"><label>${label}</label>
+        <input type="number" step="1" data-start-key="${esc(key)}" value="${esc(value)}"
+          min="${esc(opt.min ?? 0)}" max="${esc(opt.max ?? 20)}">${hint}</div>`;
+    }
+    if(opt.type === "bool"){
+      return `<div class="field"><label>${label}</label>
+        <label class="switch-row compact"><input type="checkbox" data-start-key="${esc(key)}"
+          ${value ? "checked" : ""}><span>开启</span></label>${hint}</div>`;
+    }
+    return `<div class="field"><label>${label}</label>
+      <input type="text" data-start-key="${esc(key)}" value="${esc(value)}">${hint}</div>`;
+  }).join("");
+}
+
+function startOptionsValues(){
+  const out = {};
+  document.querySelectorAll("#startOptionsFields [data-start-key]").forEach((el) => {
+    const key = el.dataset.startKey;
+    if(!key) return;
+    if(el.type === "checkbox") out[key] = !!el.checked;
+    else if(el.type === "number") out[key] = Number(el.value || 0);
+    else out[key] = String(el.value);
+  });
+  return out;
+}
+
+async function saveStartOptions(){
+  const btn = $("#startOptionsSave");
+  btn.disabled = true;
+  try{
+    const r = await fetch("/api/game/start", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({values: startOptionsValues()}),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || ("HTTP " + r.status));
+    DATA.game_start = res;
+    renderStartOptions();
+    $("#startOptionsState").textContent = "已保存；下一局开新局时生效";
+    toast("开局设置已保存");
+  }catch(e){
+    $("#startOptionsState").textContent = "";
+    toast("保存开局设置失败：" + e.message, true);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function renderPlay(){
+  const p = DATA?.play || {};
+  const cfg = DATA?.config || {};
+  const gid = String(cfg.game || "");
+  const running = !!p.running;
+  const stopping = !!p.stopping;
+  const mode = p.mode || cfg.autoplay_mode || "local";
+  const pace = cfg.autoplay_pace || p.pace || "voice";
+  if (document.activeElement !== $("#playMode")) {
+    $("#playMode").value = mode === "llm" ? "llm" : "local";
+  }
+  if (document.activeElement !== $("#playLlmModel")) {
+    $("#playLlmModel").value = cfg.autoplay_llm_model || cfg.llm_model || "deepseek-chat";
+  }
+  if (document.activeElement !== $("#playPace")) {
+    $("#playPace").value = pace === "normal" ? "normal" : "voice";
+  }
+  $("#runState").textContent = stopping
+    ? "正在收尾…"
+    : (running ? "运行中" : (p.error ? "异常停手" : "空闲"));
+  const screen = String(p.screen || "");
+  const screenLabel = {
+    PLAYING: "局内", MAP: "地图", COMBAT: "战斗", REWARD: "奖励", SHOP: "商店",
+    REST: "营火", EVENT: "事件", CHEST: "宝箱", LEVEL_UP: "升级选择",
+    MENU: "菜单", GAME_OVER: "结算", LOADING: "读盘", PAUSED: "暂停",
+    SELECTING: "选视频", WAITING: "等候选", STOPPED: "已停止",
+  }[screen] || screen || "—";
+  let detail = screenLabel;
+  if (!screen) {
+    detail = "—";
+  } else if (gid === "vampire-survivors") {
+    detail += ` · Lv ${p.level ?? "?"} · HP ${p.hp ?? "?"}/${p.max_hp ?? "?"} · 击杀 ${p.kills ?? "?"}`;
+  } else if (gid === "slay-the-spire-2") {
+    detail += ` · f${p.floor || "?"} · HP ${p.hp ?? "?"}/${p.max_hp ?? "?"}`;
+  } else if (gid === "bilibili-hot-commentary") {
+    detail = String(p.video_title || screenLabel);
+    if (p.position_s != null) detail += ` · ${Math.floor(Number(p.position_s)/60)}:${String(Math.floor(Number(p.position_s)%60)).padStart(2,"0")}`;
+  }
+  $("#playDetail").textContent = detail;
+  $("#runLast").textContent = p.last || (running ? "正在运行…" : "点「让她玩」开始本局。");
+  const route = p.route_seq ? String(p.route_seq) : "";
+  $("#routeStat").style.display = gid === "slay-the-spire-2" ? "" : "none";
+  $("#playSettings").style.display = gid === "bilibili-hot-commentary" ? "none" : "";
+  $("#playRoute").textContent = route || (p.screen === "MAP" ? "规划中…" : "—");
+  $("#playRoute").title = route
+    ? `opt${p.route_option ?? "?"} · f${p.route_floor ?? "?"}${p.route_note ? " · " + p.route_note : ""}`
+    : "";
+  $("#playStep").textContent = p.step ? `${p.step} 步` : "—";
+  const tin = Number(p.tokens_in || 0), tout = Number(p.tokens_out || 0);
+  const total = Number(p.tokens_total || (tin + tout));
+  $("#playTokens").textContent = total > 0
+    ? `${total} tok`
+    : (mode === "llm" ? "0 tok" : "—");
+  $("#playTokens").title = total > 0 ? `入 ${tin} / 出 ${tout}` : "";
+  $("#playCalls").textContent = Number(p.llm_calls || 0) > 0
+    ? `${p.llm_calls} 次` : "—";
+  const rec = DATA?.recording || {};
+  if (p.recording || rec.recording) {
+    $("#playRecord").textContent = "录像中";
+    $("#playRecord").title = `${p.record_path || rec.obs?.output_path || ""}`;
+  } else if (p.record_error) {
+    $("#playRecord").textContent = `未录像：${p.record_error}`;
+    $("#playRecord").title = p.record_error;
+  } else if (p.record_path) {
+    $("#playRecord").textContent = "已收尾";
+    $("#playRecord").title = `${p.record_path}\nchapters.md / timeline.json`;
+  } else {
+    $("#playRecord").textContent = rec.policy?.enabled ? "未开录" : "策略关闭";
+    $("#playRecord").title = "";
+  }
+  $("#playStart").disabled = running || stopping;
+  $("#playStop").disabled = !(running || stopping);
+  const live = DATA?.live || {};
+  const liveRunning = !!live.running;
+  const liveModules = live.modules || [];
+  $("#liveState").textContent = liveRunning
+    ? `运行中 · 第 ${live.segments || 0} 段`
+    : (live.phase === "error" && live.error ? `异常：${live.error}` : "停手");
+  $("#liveModule").textContent = live.module_label
+    || (liveRunning ? (live.phase === "thinking" ? "正在选下一段…" : "切换中…") : "—");
+  $("#liveModule").title = live.reason || (liveModules.map(m => m.label).join(" / "));
+  if (liveRunning && Number(live.next_at) > 0) {
+    const left = Math.max(0, Math.round((Number(live.next_at) - Date.now()/1000) / 60));
+    $("#liveNext").textContent = `约 ${left} 分钟后`;
+  } else {
+    $("#liveNext").textContent = "—";
+  }
+  const liveBtn = $("#liveToggle");
+  if (liveBtn) {
+    liveBtn.textContent = liveRunning ? "停止直播模式" : "LLM 直播模式";
+    liveBtn.title = liveRunning
+      ? "让导演停手；当前模块也会停"
+      : `候选：${liveModules.map(m => m.label).join("、") || "没有可直播模块"}`;
+    liveBtn.disabled = !liveRunning && !(DATA?.config?.llm_api_key_set);
+  }
+  $("#playHint").textContent = stopping
+    ? "正在收尾：先停录像并写 chapters.md / timeline.json，再退出。"
+    : (running
+      ? "运行中切换玩法需先「停手」；播报节奏从下一步生效。"
+      : "玩法/节奏会写本机 config.json；LLM 模式每个玩家决策都问模型，过场界面仍走本地。");
+}
+
+const ROOM_KINDS = {enter:"进入", follow:"关注", share:"分享", like:"点赞",
+  chat:"弹幕", gift:"礼物", super_chat:"醒目留言", guard:"上舰", system:"系统", self:"本机"};
+const ROOM_FILTERS = [["all","全部"], ["chat","弹幕"], ["gift","礼物"],
+  ["super_chat","醒目留言"], ["guard","上舰"], ["enter","进入"], ["follow","关注"],
+  ["like","点赞"], ["system","系统"], ["self","本机"]];
+let ROOM_FILTER = "all";
+let ROOM_SENT = [];
+let ROOM_BUSY = false;
+
+const fmtTok = (n) => Number(n || 0).toLocaleString("zh-CN");
+const roomKind = (e) => ROOM_KINDS[e.kind] || e.label || e.kind || "互动";
+
+function roomEvents(){
+  const b = DATA?.bilibili || {};
+  const seen = new Set();
+  return (b.events || []).concat(ROOM_SENT).filter(e => {
+    const key = [e.kind, e.ts, e.user, e.text].join("|");
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => (a.at || 0) - (b.at || 0)).slice(-120);
+}
+
+function renderRoom(){
+  const b = DATA?.bilibili || {};
+  const events = roomEvents();
+  const filter = ROOM_FILTER;
+  $("#roomState").textContent = b.connected ? "已连接"
+    : (b.enabled ? (b.error ? "连接失败" : "连接中…") : "未开启");
+  $("#roomId").textContent = b.room_id ? String(b.room_id) : "—";
+  $("#roomCount").textContent = `${events.length} / ${b.max || 120}`;
+  $("#roomSeq").textContent = `${events.length} 条`;
+  const last = events[events.length - 1];
+  $("#roomLast").textContent = last
+    ? `${roomKind(last)} · ${last.user || "观众"}`.slice(0, 24) : "—";
+  const counts = b.counts || {};
+  const summary = Object.keys(counts).filter(k => counts[k])
+    .map(k => `${ROOM_KINDS[k] || k} ${counts[k]}`).join(" · ");
+  $("#roomKinds").textContent = summary || "—";
+  $("#roomHint").innerHTML = b.enabled
+    ? (b.connected
+      ? `桌宠已连上房间 ${b.room_id || ""}，互动实时写入最近 ${b.max || 120} 条。`
+      : (b.error ? `连接失败：${esc(b.error)}` : "桌宠正在连接 B 站…"))
+    : "未开启监听：到「基础配置」填房间号并勾选「开启 B 站礼物监听」。";
+  $("#roomSendHint").textContent = b.can_send
+    ? `打到房间 ${b.room_id} · 最多 40 字`
+    : "需要带 bili_jct 的登录 Cookie（基础配置）";
+  $("#roomSend").disabled = ROOM_BUSY;
+
+  const chips = $("#roomFilters");
+  const chipSig = ROOM_FILTERS.map(([id]) => id).join("|") + "#" + filter;
+  if(chips.dataset.sig !== chipSig){
+    chips.innerHTML = ROOM_FILTERS.map(([id, name]) =>
+      `<span class="chip ${id === filter ? "on" : ""}" data-room-filter="${id}">${name}</span>`).join("");
+    chips.dataset.sig = chipSig;
+  }
+
+  const shown = filter === "all" ? events : events.filter(e => e.kind === filter);
+  const feed = $("#roomFeed");
+  const sig = `${shown.length}|${(shown[shown.length - 1] || {}).at || 0}|${filter}`;
+  if(feed.dataset.sig === sig) return;
+  feed.dataset.sig = sig;
+  const keep = feed.scrollTop;
+  feed.innerHTML = shown.length ? shown.slice().reverse().map(e => {
+    const t = new Date((e.at || 0) * 1000).toLocaleTimeString("zh-CN", {hour12:false});
+    const money = e.coin ? ` · ${e.coin} 金瓜子` : "";
+    const count = e.count > 1 ? ` ×${e.count}` : "";
+    return `<li class="room-item k-${esc(e.kind || "")}">
+      <div class="room-top"><span class="room-kind">${esc(roomKind(e))}</span>
+        <span class="room-user">${esc(e.user || "观众")}</span>
+        <span class="time room-time">${t}</span></div>
+      <div class="room-text">${esc(e.text || "")}${esc(count + money)}</div></li>`;
+  }).join("") : `<li class="empty">${filter === "all"
+    ? "还没有互动。桌宠开着监听后这里会实时滚动。"
+    : `最近没有「${ROOM_KINDS[filter] || filter}」记录。`}</li>`;
+  feed.scrollTop = keep;
+}
+
+async function sendRoom(){
+  const text = $("#roomText").value.trim();
+  if(!text){ toast("先写一句弹幕"); return; }
+  if(ROOM_BUSY) return;
+  const btn = $("#roomSend");
+  ROOM_BUSY = true;
+  btn.disabled = true;
+  try{
+    const r = await fetch("/api/bili/send", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({text}),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || "HTTP " + r.status);
+    ROOM_SENT = ROOM_SENT.concat([res.event || {
+      kind:"self", at: Date.now() / 1000, ts: Math.floor(Date.now() / 1000),
+      user:"雷霆小肥鱼", text,
+    }]).slice(-40);
+    $("#roomText").value = "";
+    toast("已发到直播间");
+  }catch(e){ toast("发送失败：" + e.message, true); }
+  finally{
+    ROOM_BUSY = false;
+    btn.disabled = false;
+    $("#roomFeed").dataset.sig = "";
+    renderRoom();
+  }
+}
+
+function renderTokens(){
+  const t = (DATA?.agent || {}).tokens || {};
+  const total = Number(t.total || 0);
+  $("#tokApiTotal").textContent = total ? `${fmtTok(total)} tok` : "—";
+  $("#tokApiIO").textContent = total ? `${fmtTok(t.input)} / ${fmtTok(t.output)}` : "—";
+  $("#tokApiCalls").textContent = t.calls ? `${t.calls} 次` : "—";
+  const sources = (t.sources || []).filter(s => Number(s.calls || 0) > 0);
+  $("#tokSources").textContent = sources.length
+    ? sources.map(s => `${s.label || s.source} ${fmtTok(s.total)}（${s.calls} 次）`).join(" · ")
+    : "—";
+  const steps = t.steps || [];
+  const last = steps[steps.length - 1];
+  $("#tokApiLast").textContent = last
+    ? `${fmtTok(last.total)} tok · ${last.note || last.kind || "LLM"}` : "—";
+  const kinds = (t.kinds || []).map(k => `${k.kind} ${fmtTok(k.total)}（${k.calls} 次）`);
+  $("#tokKinds").textContent = kinds.length ? `按类型：${kinds.join(" · ")}` : "—";
+  const paths = (t.paths || [t.path]).filter(Boolean);
+  if(paths.length){
+    $("#tokApiHint").innerHTML =
+      `按 ${paths.map(p => `<code>${esc(p)}</code>`).join(" + ")} 的真实 usage 累计；自动玩、KOOK 聊天和 B站训练都计入，重试失败的调用也计入。`;
+  }
+  $("#tokSteps").innerHTML = steps.length ? steps.slice().reverse().map(s => {
+    const time = new Date((s.at || 0) * 1000).toLocaleTimeString("zh-CN", {hour12:false});
+    const cost = s.ms > 0 ? ` · ${(s.ms / 1000).toFixed(1)}s` : "";
+    return `<li><div>${esc(s.note || s.kind || "LLM")}
+      <span class="hint">${esc(s.source_label || "")}</span></div>
+      <div class="t">${time}${cost} · 入 ${fmtTok(s.input)} / 出 ${fmtTok(s.output)} ·
+      <b>${fmtTok(s.total)} tok</b> · 累计 ${fmtTok(s.cumulative)}</div></li>`;
+  }).join("") : `<li>还没有 LLM 调用。</li>`;
+}
+
+async function savePlaySettings(){  try{
+    const r = await fetch("/api/config", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({
+        autoplay_mode: $("#playMode").value,
+        autoplay_llm_model: $("#playLlmModel").value.trim() || "deepseek-chat",
+        autoplay_pace: $("#playPace").value,
+      }),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || "HTTP " + r.status);
+    toast("已保存玩法/节奏");
+    refresh();
+  }catch(e){ toast("保存失败：" + e.message, true); }
+}
+
+async function startPlay(){
+  $("#playStart").disabled = true;
+  toast("正在启动游戏并让她玩…");
+  try{
+    const r = await fetch("/api/play/start", {
+      method:"POST", headers:{"content-type":"application/json"}, body:"{}",
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || res.message || "HTTP " + r.status);
+    toast(res.message || "已开始");
+    setTimeout(refresh, 1500);
+  }catch(e){ toast("启动失败：" + e.message, true); }
+  finally{ $("#playStart").disabled = false; }
+}
+
+async function stopPlay(){
+  $("#playStop").disabled = true;
+  $("#runState").textContent = "正在收尾…";
+  try{
+    const r = await fetch("/api/play/stop", {
+      method:"POST", headers:{"content-type":"application/json"}, body:"{}",
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || res.message || "HTTP " + r.status);
+    toast(res.message || "已停手");
+    await refresh();
+    setTimeout(refresh, 1800);
+  }catch(e){ toast("停手失败：" + e.message, true); }
+  finally{ refresh(); }
+}
+
+async function toggleLive(){
+  const running = !!(DATA?.live || {}).running;
+  const btn = $("#liveToggle");
+  btn.disabled = true;
+  try{
+    if(running){
+      toast("正在停止直播模式…");
+      const r = await fetch("/api/play/stop", {
+        method:"POST", headers:{"content-type":"application/json"}, body:"{}"});
+      const res = await r.json();
+      if(!res.ok) throw new Error(res.error || res.message || "HTTP " + r.status);
+      toast(res.message || "已停止直播模式");
+    } else {
+      if(!DATA?.config?.llm_api_key_set){ throw new Error("先在「基础配置」里配 API Key"); }
+      toast("正在启动 LLM 直播模式…");
+      const r = await fetch("/api/play/start", {
+        method:"POST", headers:{"content-type":"application/json"},
+        body: JSON.stringify({mode:"director"}),
+      });
+      const res = await r.json();
+      if(!res.ok) throw new Error(res.error || res.message || "HTTP " + r.status);
+      toast(res.message || "直播模式已开始");
+    }
+    setTimeout(refresh, 1200);
+  }catch(e){ toast("直播模式失败：" + e.message, true); }
+  finally{ btn.disabled = false; refresh(); }
+}
+
+async function runAgent(){
+  const btn = $("#agentRun");
+  btn.disabled = true;
+  toast("正在跑一轮演示流程…");
+  try{
+    const r = await fetch("/api/agent/run", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({goal:"控制台演示：观察 → 规划 → 验算 → 执行"}),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || "HTTP " + r.status);
+    toast("演示流程完成，看节点耗时");
+    await refresh();
+  }catch(e){ toast("Agent 运行失败：" + e.message, true); }
+  finally{ btn.disabled = false; }
+}
+
+async function saveConfig(){
+  const body = {
+    voice: $("#cfgVoice").value,
+    mambo_dir: $("#cfgMamboDir").value.trim(),
+    llm_provider: $("#cfgProvider").value.trim(),
+    llm_base_url: $("#cfgBase").value.trim(),
+    llm_model: $("#cfgModel").value.trim(),
+    bilibili_enabled: $("#cfgBiliEnabled").checked,
+    bilibili_room_id: Number($("#cfgBiliRoom").value || 0),
+  };
+  const key = $("#cfgKey").value.trim();
+  if(key) body.llm_api_key = key;
+  const biliCookie = $("#cfgBiliCookie").value.trim();
+  if(biliCookie) body.bilibili_cookie = biliCookie;
+  try{
+    const r = await fetch("/api/config", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify(body),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || "HTTP " + r.status);
+    $("#cfgKey").value = "";
+    $("#cfgBiliCookie").value = "";
+    const vs = res.voice_start || {};
+    if(vs && !vs.online && vs.starting) toast("配置已保存；曼波引擎启动中，稍后点「试听」");
+    else if(vs && !vs.ok) toast("配置已保存；" + (vs.message || "曼波启动失败"), true);
+    else toast("配置已保存到本机 config.json");
+    await refresh();
+  }catch(e){ toast("保存失败：" + e.message, true); }
+}
+
+async function recordingPost(action, extra){
+  const r = await fetch("/api/recording", {
+    method:"POST", headers:{"content-type":"application/json"},
+    body: JSON.stringify({action, game: DATA?.config?.game || "", ...(extra || {})}),
+  });
+  const res = await r.json();
+  if(!r.ok || !res.ok) throw new Error(res.error || res.result?.error || ("HTTP " + r.status));
+  return res;
+}
+
+async function recToggle(){
+  const rec = DATA?.recording || {};
+  const recording = !!(rec.recording || rec.obs?.recording);
+  const btn = $("#recToggle");
+  btn.disabled = true;
+  try{
+    toast(recording ? "正在停录并收尾…" : "正在检查脚本并开录…");
+    const res = await recordingPost(recording ? "stop" : "start");
+    const msg = res.result?.message || (recording ? "已停止录像" : "已开始录像");
+    toast(msg);
+    await refresh();
+  }catch(e){ toast("录像操作失败：" + e.message, true); }
+  finally{ btn.disabled = false; renderRecording(); }
+}
+
+async function recEnsure(){
+  const btn = $("#recEnsure");
+  btn.disabled = true;
+  try{
+    const res = await recordingPost("ensure");
+    toast(res.result?.message || "录制脚本已检查");
+    await refresh();
+  }catch(e){ toast("检查脚本失败：" + e.message, true); }
+  finally{ btn.disabled = false; }
+}
+
+async function recSave(){
+  const btn = $("#recSave");
+  btn.disabled = true;
+  try{
+    const res = await recordingPost("save", {
+      enabled: $("#recEnabled").checked,
+      split: $("#recSplit").value,
+      recording_enabled: $("#recMaster").checked,
+    });
+    toast(res.result?.message || "录像策略已保存");
+    await refresh();
+  }catch(e){ toast("保存录像策略失败：" + e.message, true); }
+  finally{ btn.disabled = false; }
+}
+
+async function saveGame(){
+  const game = $("#cfgGame").value;
+  if(!game){ toast("先选一个游戏"); return; }
+  try{
+    const r = await fetch("/api/config", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({game}),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || "HTTP " + r.status);
+    toast("当前游戏已切换");
+    await refresh();
+    openGame(game);
+  }catch(e){ toast("切换失败：" + e.message, true); }
+}
+
+async function launchGame(){
+  const game = $("#cfgGame").value || DATA?.config?.game || "";
+  if(!game){ toast("先选一个游戏"); return; }
+  const btn = $("#gameLaunch");
+  btn.disabled = true;
+  toast("正在请求启动游戏…");
+  try{
+    const r = await fetch("/api/game/launch", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({game}),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || res.message || "HTTP " + r.status);
+    toast(res.message || "已请求启动游戏");
+    setTimeout(refresh, 1200);
+  }catch(e){ toast("启动失败：" + e.message, true); }
+  finally{ btn.disabled = false; }
+}
+
+async function startVoice(voice){
+  toast("正在启动曼波引擎…");
+  try{
+    const r = await fetch("/api/voice/start", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({voice}),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || res.message || "HTTP " + r.status);
+    toast(res.message || "曼波引擎启动中…");
+    setTimeout(refresh, 1600);
+  }catch(e){ toast("启动失败：" + e.message, true); }
+}
+
+async function clearApiKey(){
+  try{
+    const r = await fetch("/api/config", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({clear_api_key: true}),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || "HTTP " + r.status);
+    toast("API Key 已清除");
+    await refresh();
+  }catch(e){ toast("清除失败：" + e.message, true); }
+}
+
+function renderFeed(){
+  const comments = (DATA?.overlay?.comments || []).slice().reverse();
+  if(!comments.length){
+    $("#feed").innerHTML = `<li class="empty">还没有台词。先发一句试试。</li>`;
+    return;
+  }
+  $("#feed").innerHTML = comments.map(c => {
+    const t = new Date((c.ts || 0) * 1000).toLocaleTimeString("zh-CN", {hour12:false});
+    return `<li><div class="txt">${esc(c.speech || c.thought || "")}</div>
+      <div class="meta">#${c.id} · ${t} · ${esc(c.tag || "思路")}</div></li>`;
+  }).join("");
+}
+
+function renderSamples(){
+  const samples = DATA?.samples || [];
+  $("#samples").innerHTML = samples
+    .map(s => `<span class="chip" data-fill="${esc(s)}">${esc(s)}</span>`).join("");
+}
+
+function render(){
+  renderPills(); renderPersona(); renderVoice(); renderGames(); renderBiliPlaylist(); renderBiliCommentSettings(); renderRight(); renderFeed(); renderSamples();
+  renderConfig(); renderTelemetry(); renderAgent(); renderPlay(); renderRecording(); renderStartOptions(); renderRoom(); renderTokens(); renderNav();
+  $("#rootHint").textContent = DATA?.root ? `仓库：${DATA.root}` : "";
+}
+
+async function refresh(){
+  try{
+    const r = await fetch("/api/studio", {cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    DATA = await r.json();
+    render();
+  }catch(e){
+    toast("控制台后端没响应：" + e.message, true);
+  }
+}
+
+function setCounter(){
+  $("#thoughtCount").textContent = ($("#thought").value.length) + " 字";
+  $("#memeCount").textContent = ($("#meme").value.length) + " 字";
+  const t = $("#thought").value.trim(), m = $("#meme").value.trim();
+  const total = (t ? t.replace(/[。\s]+$/,"") + "。" : "") + (m ? m.replace(/^[，,、。；;\s—–-]+/,"") : "");
+  $("#composed").textContent = total ? `拼句 ${total.length} 字` : "—";
+}
+
+function showLint(res){
+  const lint = res.lint || {};
+  const issues = lint.issues || [];
+  const head = lint.ok
+    ? `<span class="pass">PASS</span> ${res.dry_run ? "（未发送）" : "已送出"} · ${issues.length} 条提示`
+    : `<span class="fail">FAIL</span> ${issues.length} 条问题，先改再发`;
+  const lines = issues.map(i => `<span class="${i.level === "FAIL" ? "fail" : "warn"}">${i.level}</span> ${esc(i.message)}`).join("\n");
+  $("#lint").innerHTML = `${head}${lines ? "\n" + lines : ""}${res.text ? `<div class="final">「${esc(res.text)}」</div>` : ""}`;
+}
+
+async function send(dry){
+  if(BUSY) return;
+  const thought = $("#thought").value.trim();
+  const meme = $("#meme").value.trim();
+  if(!thought && !meme){ toast("先写一句。"); return; }
+  BUSY = true;
+  $("#send").disabled = true; $("#lintOnly").disabled = true;
+  try{
+    const r = await fetch("/api/say", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({thought, meme, dry_run: !!dry}),
+    });
+    const res = await r.json();
+    showLint(res);
+    if(!res.ok){ toast(res.error || "发送失败", true); return; }
+    if(!dry){
+      $("#thought").value = ""; $("#meme").value = ""; setCounter();
+      toast("已送到弹幕源；配音排队中。");
+      await refresh();
+    }
+  }catch(e){ toast("发送失败：" + e.message, true); }
+  finally{
+    BUSY = false; $("#send").disabled = false; $("#lintOnly").disabled = false;
+  }
+}
+
+async function preview(voice){
+  const text = ($("#thought").value.trim() || "它 21，我最多挡 15。差 6，嗨呀。");
+  toast(`合成中（${voice === "mambo" ? "曼波" : "动物语"}）…`);
+  try{
+    const r = await fetch("/api/voice", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({text, voice}),
+    });
+    const ct = r.headers.get("content-type") || "";
+    if(r.status === 202 || ct.includes("application/json")){
+      let msg = "曼波引擎启动中，稍后重试";
+      try{ const j = await r.json(); msg = j.error || j.message || msg; }catch(_){}
+      toast(msg, r.status >= 400);
+      await refresh();
+      return;
+    }
+    if(!r.ok){
+      let msg = "HTTP " + r.status;
+      try{ const j = await r.json(); msg = j.error || msg; }catch(_){}
+      throw new Error(msg);
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    await audio.play();
+    toast(`播放 ${voice === "mambo" ? "曼波" : "动物语"} · ${(blob.size / 1024).toFixed(0)} KB`);
+  }catch(e){ toast("试听失败：" + e.message, true); }
+}
+
+async function biliControl(action, bvid){
+  if(!DATA?.play?.running){
+    toast("B站云观影还没启动，先在上面启动自动玩", true);
+    return;
+  }
+  const labels = {play:"播放", close:"关闭标签页", refresh:"刷新标签页"};
+  try{
+    const r = await fetch("/api/bilibili/control", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({action, bvid: bvid || ""}),
+    });
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || "HTTP " + r.status);
+    toast((labels[action] || action) + "命令已发送");
+    setTimeout(refresh, 900);
+  }catch(e){ toast("操作失败：" + e.message, true); }
+}
+
+const VIEW_ALIASES = {settings:"basic", basic:"basic", games:"games", persona:"persona",
+  training:"training", room:"room", interaction:"interaction", thoughts:"thoughts",
+  agent:"agent", telemetry:"telemetry"};
+function setView(name, updateHash){
+  const target = VIEW_ALIASES[name] || "basic";
+  CURRENT_VIEW = target;
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.dataset.view === target));
+  document.querySelectorAll(".nav-item").forEach(v => v.classList.toggle("active", v.dataset.view === target));
+  if(target === "thoughts") loadThoughts(THOUGHT_PAGE);
+  if(target === "games" && !GAME_SEL){
+    const cur = (DATA?.config || {}).game || "";
+    if(cur) openGame(cur);      // 进游戏页先展开当前游戏的详情
+  }
+  if(updateHash !== false){
+    const hash = target === "basic" ? "settings" : target;
+    if(location.hash !== "#" + hash) history.replaceState(null, "", "#" + hash);
+    window.scrollTo({top:0, behavior:"smooth"});
+  }else{
+    requestAnimationFrame(() => window.scrollTo(0, 0));
+  }
+}
+document.querySelectorAll(".nav-item").forEach(item => {
+  item.addEventListener("click", () => setView(item.dataset.view));
+});
+window.addEventListener("hashchange", () => setView(location.hash.replace(/^#/, ""), false));
+
+document.addEventListener("click", (ev) => {
+  const start = ev.target.closest("[data-start-voice]");
+  if(start){ startVoice(start.dataset.startVoice); return; }
+  const quip = ev.target.closest("[data-quip]");
+  if(quip){ $("#meme").value = quip.dataset.quip; setCounter(); setView("interaction"); return; }
+  const fill = ev.target.closest("[data-fill]");
+  if(fill){ $("#meme").value = fill.dataset.fill; setCounter(); return; }
+  const rf = ev.target.closest("[data-room-filter]");
+  if(rf){
+    ROOM_FILTER = rf.dataset.roomFilter;
+    $("#roomFeed").dataset.sig = "";
+    renderRoom();
+    return;
+  }
+  const pv = ev.target.closest("[data-voice]");
+  if(pv){ preview(pv.dataset.voice); return; }
+  const bp = ev.target.closest("[data-bili-play]");
+  if(bp){ biliControl("play", bp.dataset.biliPlay); return; }
+  const bc = ev.target.closest("[data-bili-close]");
+  if(bc){ biliControl("close"); }
+});
+
+$("#send").addEventListener("click", () => send(false));
+$("#lintOnly").addEventListener("click", () => send(true));
+$("#cfgSave").addEventListener("click", saveConfig);
+$("#gameSave").addEventListener("click", saveGame);
+$("#gameLaunch").addEventListener("click", launchGame);
+$("#biliRefresh").addEventListener("click", () => biliControl("refresh"));
+$("#biliClose").addEventListener("click", () => biliControl("close"));
+$("#biliCommentSave").addEventListener("click", saveBiliCommentSettings);
+$("#agentRun").addEventListener("click", runAgent);
+$("#playStart").addEventListener("click", startPlay);
+$("#playStop").addEventListener("click", stopPlay);
+$("#recToggle").addEventListener("click", recToggle);
+$("#recEnsure").addEventListener("click", recEnsure);
+$("#recSave").addEventListener("click", recSave);
+$("#startOptionsSave").addEventListener("click", saveStartOptions);
+$("#recMaster").addEventListener("change", async () => {
+  try{
+    const res = await recordingPost("save", {
+      recording_enabled: $("#recMaster").checked,
+      enabled: $("#recEnabled").checked,
+      split: $("#recSplit").value,
+    });
+    toast(res.result?.message || "总开关已保存");
+    await refresh();
+  }catch(e){ toast("保存总开关失败：" + e.message, true); }
+});
+$("#liveToggle").addEventListener("click", toggleLive);
+$("#playMode").addEventListener("change", savePlaySettings);
+$("#playPace").addEventListener("change", savePlaySettings);
+$("#playLlmModel").addEventListener("change", savePlaySettings);
+$("#roomSend").addEventListener("click", sendRoom);
+$("#roomRefresh").addEventListener("click", (e) => { e.preventDefault(); refresh(); });
+$("#thoughtRefresh").addEventListener("click", () => loadThoughts(THOUGHT_PAGE));
+$("#roomText").addEventListener("keydown", (e) => {
+  if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendRoom(); }
+});
+$("#cfgClearKey").addEventListener("click", clearApiKey);
+$("#reload").addEventListener("click", (e) => { e.preventDefault(); refresh(); });
+["thought","meme"].forEach(id => $("#" + id).addEventListener("input", setCounter));
+document.addEventListener("keydown", (e) => {
+  if((e.ctrlKey || e.metaKey) && e.key === "Enter"){ e.preventDefault(); send(false); }
+});
+
+setView(location.hash.replace(/^#/, ""), false);
+setCounter();
+refresh();
+loadPersona();
+setInterval(refresh, 3000);
+// 模型思考页打开且没展开详情时静默刷新，能边聊边看；翻页/筛选时不打断。
+setInterval(() => {
+  if(CURRENT_VIEW === "thoughts" && !THOUGHT_DETAIL_ID) loadThoughts(THOUGHT_PAGE, true);
+}, 6000);
+</script>
+</body>
+</html>

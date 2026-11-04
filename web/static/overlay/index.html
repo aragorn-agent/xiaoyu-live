@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>雷霆小肥鱼 · 边打边想</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  * { box-sizing: border-box; }
+  /* 桌宠 + 漫画气泡：气泡在上，雷霆小肥鱼在下，整块居中 */
+  #panel {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92vw, 540px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: #22242e;
+    font-family: "Microsoft YaHei", "Noto Sans SC", "PingFang SC", sans-serif;
+    text-shadow: none;
+    transition: opacity .3s ease;
+  }
+  /* 没有对话时只收气泡，桌宠一直在 */
+  #panel.empty { opacity: 1; }
+  #panel.empty #main { opacity: 0; transform: translateY(6px) scale(.96); }
+  #panel::after { display: none; }
+
+  #avatar {
+    flex: 0 0 auto;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  #portraitWrap {
+    position: relative;
+    width: 190px;
+    height: 248px;
+  }
+  #portrait {
+    width: 190px;
+    height: 248px;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+  #portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center bottom;
+    display: block;
+    filter: drop-shadow(0 10px 12px rgba(0,0,0,.5));
+  }
+  #avatar.talking #portraitWrap { animation: bounce .34s ease-in-out infinite; }
+  @keyframes bounce { 50% { transform: translateY(-6px) rotate(1.2deg); } }
+  #voice {
+    position: absolute;
+    right: 0;
+    bottom: 46px;
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    height: 26px;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  #avatar.talking #voice { opacity: 1; }
+  #voice span {
+    width: 4px;
+    height: 8px;
+    border-radius: 3px;
+    background: #7fd6d0;
+    box-shadow: 0 0 8px rgba(127,214,208,.8);
+    animation: wave .5s ease-in-out infinite alternate;
+  }
+  #voice span:nth-child(2) { animation-delay: .1s; height: 14px; }
+  #voice span:nth-child(3) { animation-delay: .2s; height: 10px; }
+  #voice span:nth-child(4) { animation-delay: .3s; height: 18px; }
+  @keyframes wave { from { transform: scaleY(.45); } to { transform: scaleY(1.15); } }
+  #avatar .name {
+    margin-top: 2px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: #f4c968;
+    background: none;
+    border: 0;
+    padding: 0;
+    white-space: nowrap;
+    text-shadow: 0 2px 4px rgba(0,0,0,.9);
+  }
+  #avatar .tagline {
+    margin-top: 1px;
+    font-size: 10px;
+    color: rgba(255,255,255,.62);
+    white-space: nowrap;
+    text-shadow: 0 2px 3px rgba(0,0,0,.9);
+  }
+  /* 《人工智能生成合成内容标识办法》要求 AI 生成内容主动标识。
+     想隐藏可以在配置里关，但默认开着，避免直播被判「未标识」。 */
+  #aiBadge {
+    margin-top: 3px;
+    display: inline-block;
+    font-size: 9px;
+    line-height: 1.4;
+    padding: 0 5px;
+    border-radius: 6px;
+    color: rgba(255,255,255,.72);
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(0,0,0,.28);
+    letter-spacing: .5px;
+  }
+
+  /* 漫画气泡本体：圆角、金边、底部小尾巴；宽度跟着文字走，最长 540 */
+  #main {
+    position: relative;
+    z-index: 2;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 150px;
+    padding: 10px 18px 13px;
+    border-radius: 20px;
+    border: 2px solid rgba(216, 168, 74, .92);
+    background: linear-gradient(180deg, #fffdf7, #f7efdd);
+    box-shadow: 0 10px 26px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.9);
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  #main::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -10px;
+    width: 18px;
+    height: 18px;
+    background: #f8f0dd;
+    border-right: 2px solid rgba(216, 168, 74, .92);
+    border-bottom: 2px solid rgba(216, 168, 74, .92);
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 0 0 4px 0;
+  }
+  #head { display: flex; align-items: center; justify-content: flex-start; height: auto; margin-bottom: 3px; }
+  #status { font-size: 12px; color: #7a5a20; white-space: nowrap; letter-spacing: .3px; }
+  #status b { color: #4a350c; font-weight: 700; }
+
+  /* 只保留一条对话：没有历史堆叠、没有折叠裁切。 */
+  #feed { margin-top: 0; flex: 0 0 auto; min-width: 0; display: flex; align-items: flex-start; }
+  .comment { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+  .comment.enter { animation: slidein .32s ease both; }
+  @keyframes slidein {
+    from { opacity: 0; transform: translateY(6px) scale(.98); }
+    to   { opacity: 1; transform: none; }
+  }
+  .row { display: flex; align-items: flex-start; gap: 10px; }
+  .text {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 19px;
+    line-height: 1.5;
+    letter-spacing: .2px;
+    color: #1b1d26;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+  #feed[data-len="long"] .text { font-size: 17.5px; line-height: 1.48; }
+  #feed[data-len="xlong"] .text { font-size: 16px; line-height: 1.44; }
+
+  #routePanel {
+    position: absolute; top: 14px; left: 16px; width: 190px;
+    padding: 10px 10px 8px; border-radius: 16px;
+    border: 1.5px solid rgba(216, 168, 74, .55);
+    background: linear-gradient(180deg, rgba(20, 22, 30, .9), rgba(10, 11, 18, .82));
+    box-shadow: 0 10px 26px rgba(0,0,0,.5);
+    color: #f6f0e2; font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    text-shadow: 0 2px 2px rgba(0,0,0,.85); opacity: 1; transition: opacity .25s ease;
+  }
+  #routePanel.hidden { opacity: 0; pointer-events: none; }
+  #routeHead { font-size: 12px; letter-spacing: 1px; color: #d8a84a; margin-bottom: 4px; }
+  #routeNote { font-size: 10.5px; line-height: 1.35; color: #cfc7b6; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div id="panel" class="empty">
+  <div id="main">
+    <div id="head">
+      <span id="status"></span>
+    </div>
+    <div id="feed"></div>
+  </div>
+  <div id="avatar">
+    <div id="portraitWrap">
+      <div id="portrait">
+        <img src="/assets/pet_front.png" alt="雷霆小肥鱼">
+      </div>
+      <div id="voice"><span></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="name">雷霆小肥鱼 · DeepSeek</div>
+    <div class="tagline">正在替你爬塔</div>
+    <div id="aiBadge">AI 生成 · 虚拟形象</div>
+  </div>
+</div>
+
+<div id="routePanel" class="hidden">
+  <div id="routeHead">ROUTE</div>
+  <canvas id="routeCanvas" width="170" height="470"></canvas>
+  <div id="routeNote"></div>
+</div>
+<script>
+  // ---- 动森式「动物语」音效（Animalese）--------------------------------
+  // 每个字一个短促的音节，五声音阶随机上下行；不加载任何音频文件，全用 Web Audio 合成。
+  // 关掉：页面地址加 ?sfx=0；音量：?vol=0.8（0~1.5）。
+  const Animalese = (() => {
+    const qs = new URLSearchParams(location.search);
+    const enabled = qs.get('sfx') !== '0';
+    const volume = Math.max(0, Math.min(1.5, parseFloat(qs.get('vol') || '0.55')));
+    const SCALE = [0, 2, 4, 7, 9, 12]; // 宫商角徵羽
+    let ctx = null, master = null, voices = [];
+
+    function ensure() {
+      if (!enabled) return null;
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = volume;
+        master.connect(ctx.destination);
+      }
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      return ctx;
+    }
+
+    function stop() {
+      for (const v of voices) { try { v.stop(); } catch (e) {} }
+      voices = [];
+    }
+
+    function blip(t, freq, dur) {
+      const osc = ctx.createOscillator();
+      const sub = ctx.createOscillator();
+      const subGain = ctx.createGain();
+      const gain = ctx.createGain();
+      const lp = ctx.createBiquadFilter();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.94, t + dur);
+      sub.type = 'square';
+      sub.frequency.value = freq * 0.5;
+      subGain.gain.value = 0.35;
+      lp.type = 'lowpass';
+      lp.frequency.value = Math.min(3200, freq * 3.2);
+      lp.Q.value = 1.0;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.2, t + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.05, t + dur * 0.55);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(lp);
+      sub.connect(subGain); subGain.connect(lp);
+      lp.connect(gain); gain.connect(master);
+      osc.start(t); sub.start(t);
+      osc.stop(t + dur + 0.02); sub.stop(t + dur + 0.02);
+      voices.push(osc, sub);
+    }
+
+    function speak(text) {
+      if (!ensure()) return;
+      stop();
+      const chars = Array.from(String(text || ''));
+      const total = chars.filter(ch => /[\u4e00-\u9fffA-Za-z0-9]/.test(ch)).length;
+      if (!total) return;
+      const spokenMax = Math.min(70, total);
+      const step = Math.max(0.03, Math.min(0.06, 2.3 / Math.max(6, spokenMax)));
+      const dur = Math.min(0.06, step * 0.92);
+      let t = ctx.currentTime + 0.03;
+      let degree = 2 + Math.floor(Math.random() * 2);
+      let spoken = 0;
+      for (const ch of chars) {
+        if (/\s/.test(ch)) { t += step * 0.55; continue; }
+        if (/[，,、。；;：:！!？?…—]/.test(ch)) { t += step * 1.5; continue; }
+        if (!/[\u4e00-\u9fffA-Za-z0-9]/.test(ch)) continue;
+        if (spoken >= spokenMax) break;
+        spoken += 1;
+        degree = Math.max(0, Math.min(SCALE.length - 1, degree + (Math.random() < 0.5 ? -1 : 1)));
+        const semis = SCALE[degree] + (Math.random() < 0.12 ? 12 : 0);
+        const freq = 520 * Math.pow(2, semis / 12) * (0.985 + Math.random() * 0.03);
+        blip(t, freq, dur);
+        t += step;
+      }
+      if (voices.length > 80) voices = voices.slice(-40);
+    }
+
+    return { speak, stop, ensure, enabled, volume };
+  })();
+  window.animalese = Animalese;
+
+  let lastId = 0;
+  let hydrated = false;   // 收到过首包没有（首包只补字幕，之后每条都出声）
+  let talkTimer = null;
+  const panel = document.getElementById('panel');
+  const feed = document.getElementById('feed');
+  const statusEl = document.getElementById('status');
+  const avatar = document.getElementById('avatar');
+
+  // 单行截断：超长内容宁可省略，也不让气泡铺满屏幕（全文仍在战报里）。
+  const MAX_THOUGHT = 120;
+  const MAX_MEME = 70;
+  // 浏览器源的音频进 OBS 比画面晚一截（实测：post → OBS 电平 120–189ms，均值 150ms；
+  // 页面拿到 wav 并起播只要 ~60ms）。所以弹窗延后 ~100ms 再出，字幕和声音就是同一刻。
+  // 可加 ?lead=120 这种参数现场调。
+  const SPEAK_LEAD_MS = (function () {
+    const v = parseInt(new URLSearchParams(location.search).get('lead') || '', 10);
+    return Number.isFinite(v) ? v : 100;
+  })();
+
+  function fmtStatus(s) {
+    if (!s) return '';
+    const parts = [];
+    if (s.character) parts.push(`<b>${esc(s.character)}</b>`);
+    if (s.ascension !== undefined) parts.push(`A${esc(s.ascension)}`);
+    if (s.floor) parts.push(`第 ${esc(s.floor)} 层`);
+    if (s.hp !== undefined) parts.push(`HP <b>${esc(s.hp)}</b>/${esc(s.max_hp)}`);
+    if (s.gold !== undefined) parts.push(`金币 <b>${esc(s.gold)}</b>`);
+    return parts.join(' · ');
+  }
+
+  function esc(v) {
+    return String(v === undefined || v === null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function cleanSpeech(s) {
+    return String(s || '').replace(/(?:雷霆小肥鱼|DeepSeek|AI)\s*[:：]\s*/g, '').trim();
+  }
+
+  function clip(s, n) {
+    const t = String(s || '').trim();
+    if (t.length <= n) return t;
+    return t.slice(0, n - 1).replace(/[\s，,、]+$/, '') + '…';
+  }
+
+  // 抖动时长 = 这一句的真实音频长度（由 mamboSay 量出来），说完才停，不再按字数估。
+  function startTalking(ms) {
+    avatar.classList.add('talking');
+    if (talkTimer) clearTimeout(talkTimer);
+    talkTimer = setTimeout(() => {
+      talkTimer = null;
+      avatar.classList.remove('talking');
+    }, Math.max(400, ms));
+  }
+
+  function stopTalking() {
+    if (talkTimer) clearTimeout(talkTimer);
+    talkTimer = null;
+    avatar.classList.remove('talking');
+  }
+
+  // 正常说话：各句自己收尾，中间只补标点，不加破折号/标签之类的固定句式。
+  function composeSentence(thought, memeText) {
+    const t = String(thought || '').trim().replace(/[。\s]+$/, '');
+    const m = String(memeText || '').trim().replace(/^[，,、。；;\s—–-]+/, '');
+    if (!t) return m ? ensureStop(m) : '';
+    if (!m) return ensureStop(t);
+    // 思路正常收句号，吐槽接着往下说；吐槽自带结尾标点就原样保留
+    return ensureStop(t) + ensureStop(m);
+  }
+
+  function ensureStop(s) {
+    return /[。！？!?…”）)]$/.test(s) ? s : s + '。';
+  }
+
+  function renderBubble(sentence, durMs, c) {
+    const total = sentence.length;
+    feed.dataset.len = total > 170 ? 'xlong' : total > 110 ? 'long' : 'short';
+    const div = document.createElement('div');
+    div.className = 'comment enter';
+    // 整句同色同字重：一句话就是一个语气，不做「正文 + 注释」的分裂
+    div.innerHTML = `<span class="text">${esc(sentence)}</span>`;
+    // 关键：整块替换，永远只有一条对话。
+    feed.replaceChildren(div);
+    // 自报渲染时刻，用来量「弹窗 vs 声音」的真实差（服务端只记一行日志）
+    mark('bubble', c);
+    panel.classList.remove('empty');
+    // 有真实音频长度就按它抖（说多久抖多久），没有才退回按字数估
+    startTalking(durMs > 0 ? durMs : Math.max(2400, Math.min(8500, 1500 + total * 70)));
+  }
+
+  // 说一句就排队：一次推来 2–4 句也能依次说完，不互相盖掉、也不叠着响。
+  // 2026-10-27 改「最新优先」：旧实现是严格 FIFO，上一句 8–15 秒没播完时新台词
+  // 只能干等，观众听到的就是「操作都做完了，过一会儿才讲解上一步」。现在：
+  //   · 还没起播的旧台词一律作废（mark skip），只留最新一条；
+  //   · 正在播的台词如果已经播了 PREEMPT_MS 以上，直接切到新台词；
+  //   · 台词从发布到现在超过 STALE_MS 的，不播（讲的已经是上一步了）。
+  const sayQueue = [];
+  let saying = false;
+  let sayTok = 0;              // 新台词一来就自增，老的播放循环看到自己过期就退
+  let playStartedAt = 0;       // 这一句真的开始出声的时刻（ms）
+  const PREEMPT_MS = 800;      // 至少让上一句说满 0.8 秒再切，别听成断字
+  const STALE_MS = 9000;       // 超过 9 秒还没轮到 → 不播（只影响过期解说，不丢字幕历史）
+  const spokenIds = new Set();   // 同一条台词只播一次（SSE 和兜底轮询可能同时送到）
+  const qs0 = new URLSearchParams(location.search);
+  const ROLE = (qs0.get('role') || (qs0.get('live') ? 'live' : 'record')).toLowerCase();
+
+  // 只上报观测数据，不参与渲染/播放决策。
+  // id/cid 让页面的一条 bubble/audio 和 sts2 的 prewarm/publish 精确对上。
+  function mark(ev, c, extra) {
+    const qs = new URLSearchParams();
+    qs.set('ev', ev);
+    qs.set('role', ROLE);
+    if (c && typeof c.id === 'number') qs.set('id', String(c.id));
+    if (c && c.client_id) qs.set('cid', String(c.client_id).slice(0, 64));
+    qs.set('page_t', String(Date.now() / 1000));
+    if (extra) {
+      for (const k of Object.keys(extra)) {
+        const v = extra[k];
+        if (v !== undefined && v !== null) qs.set(k, String(v));
+      }
+    }
+    try { fetch('/mark?' + qs.toString(), { cache: 'no-store' }).catch(() => {}); } catch (e) {}
+  }
+
+  // 前端版本：每次改这个文件就 +1，页面加载时上报一次，日志里能确认「播的到底是新 JS 还是缓存」。
+  const UI_VER = '2026-10-30-speech';
+  try { mark('hi', null, { ver: UI_VER }); } catch (e) {}
+
+  function ageMsOf(c) {
+    const ts = c && typeof c.ts === 'number' ? c.ts : 0;
+    return ts > 0 ? Math.max(0, Date.now() - ts * 1000) : 0;
+  }
+
+  function enqueueSay(c, silent) {
+    if (c && typeof c.id === 'number') {
+      if (spokenIds.has(c.id)) return;
+      spokenIds.add(c.id);
+      if (spokenIds.size > 200) spokenIds.delete(spokenIds.values().next().value);
+    }
+    if (!silent) {
+      const age = ageMsOf(c);
+      if (age > STALE_MS) {          // 从发布到轮到我超过 9 秒：这一步早过去了
+        mark('skip', c, { why: 'stale', age: Math.round(age) });
+        return;
+      }
+    }
+    if (silent) {
+      for (const old of sayQueue.splice(0)) mark('skip', old.c, { why: 'silent' });
+    }
+    // 最新优先：还没起播的旧台词直接作废（它讲的已经是上一步）
+    while (sayQueue.length) {
+      const old = sayQueue.shift();
+      mark('skip', old.c, { why: 'superseded' });
+    }
+    sayQueue.push({ c, silent });
+    // 正在播/正在合成的那句让位给新句：
+    //   · 还没出声（合成中）→ 直接作废，别让观众先听到上一步
+    //   · 已经出声但播够 PREEMPT_MS → 切到新句（新句合成期间旧句继续响，不留空白）
+    if (saying && !silent) {
+      const played = playStartedAt ? Date.now() - playStartedAt : 0;
+      if (!playStartedAt || played > PREEMPT_MS) sayTok += 1;
+    }
+    pumpSay();
+  }
+
+  async function pumpSay() {
+    if (saying) return;
+    saying = true;
+    try {
+      while (sayQueue.length) {
+        const { c, silent } = sayQueue.shift();
+        await sayOne(c, silent, ++sayTok);
+      }
+    } finally {
+      saying = false;
+    }
+  }
+
+  // 等 durMs，但一有新台词就提前醒（返回 false = 已经被取代）
+  async function waitOrAbort(ms, tok) {
+    const end = Date.now() + Math.max(0, ms);
+    while (Date.now() < end) {
+      if (tok !== sayTok) return false;
+      await sleep(Math.min(80, end - Date.now()));
+    }
+    return tok === sayTok;
+  }
+
+  async function sayOne(c, silent, tok) {
+    const thought = clip(cleanSpeech(c.thought), MAX_THOUGHT);
+    const memeText = clip(cleanSpeech(c.meme), MAX_MEME);
+    // 云观影这类插件只给 speech、不给 thought/meme；先取 speech，不能因为前两项为空就丢掉。
+    const sentence = (c.speech && String(c.speech).trim()) || composeSentence(thought, memeText);
+    if (!sentence) return;
+
+    // 刷新/重连时只补字幕，不重放上一句
+    if (silent) { renderBubble(sentence, 0, c); return; }
+    // 排队排到现在还没轮到：这一步已经过去了，别播（字幕也就不挂了）
+    const age = ageMsOf(c);
+    if (age > STALE_MS) { mark('skip', c, { why: 'stale_play', age: Math.round(age) }); return; }
+    // 先把声音起出来，等它真的从浏览器音频缓冲里出来，再让弹窗和头像抖动一起出。
+    // 实测：post → OBS 拿到声音要 ~256ms，而画面几乎立刻可见 —— 差的就是这一段缓冲。
+    const said = await mamboSay(sentence, c);
+    if (tok !== sayTok) { stopMambo(); return; }   // 合成期间来了新台词：这句不说了
+    if (said.ok) await sleep(SPEAK_LEAD_MS);
+    if (tok !== sayTok) return;
+    renderBubble(sentence, said.durMs, c);
+    // 一句说完再上下一条，队列里的话不会被吃掉（有更新就提前醒）
+    if (said.ok) {
+      const done = await waitOrAbort(said.durMs + 60, tok);
+      if (!done) stopMambo();        // 被新台词取代：旧句立刻停
+    }
+  }
+
+  function showComment(c, silent) {
+    enqueueSay(c, silent);
+  }
+
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, Math.max(0, ms)));
+  }
+
+  // 曼波配音：优先走本地 MamboTTS（overlay_server /tts → 127.0.0.1:9880）。
+  // OBS 的浏览器源会把这个 Audio 的元素声音一起录进去，所以录像自带配音。
+  // 曼波配音：一句一条，走 AudioContext。解码完立刻起播，比 <audio> 少了每次重新初始化的延迟。
+  const mamboCache = new Map();
+  let actx = null;
+  let mamboSource = null;
+  function audioCtx() {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      actx = new AC({ latencyHint: 'interactive' });
+    }
+    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
+    return actx;
+  }
+  function stopMambo() {
+    if (mamboSource) {
+      try { mamboSource.stop(); } catch (e) {}
+      mamboSource = null;
+    }
+    stopTalking();
+  }
+  async function mamboLoad(sentence) {
+    let buf = mamboCache.get(sentence);
+    if (buf) return buf;
+    const r = await fetch('/tts?text=' + encodeURIComponent(sentence), { cache: 'no-store' });
+    if (!r.ok) return null;
+    const ab = await r.arrayBuffer();
+    if (!ab.byteLength) return null;
+    const ctx = audioCtx();
+    if (!ctx) return null;
+    buf = await ctx.decodeAudioData(ab);
+    mamboCache.set(sentence, buf);
+    if (mamboCache.size > 24) mamboCache.delete(mamboCache.keys().next().value);
+    return buf;
+  }
+  // 返回 true = 声音真的起了（字幕就跟这一刻一起放）
+  // 返回 {ok, durMs}：durMs 就是这一句的真实音频长度，气泡抖多久由它说了算
+  async function mamboSay(sentence, c) {
+    if (!sentence) return { ok: false, durMs: 0 };
+    try {
+      const buf = await mamboLoad(sentence);
+      if (!buf) return { ok: false, durMs: 0 };
+      const ctx = audioCtx();
+      if (!ctx) return { ok: false, durMs: 0 };
+      stopMambo();  // 一句一条：绝不两句叠着响
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      mamboSource = src;
+      src.onended = () => {
+        mark('audio_end', c, { ctx: ctx.currentTime, dur: buf.duration });
+        if (mamboSource === src) { mamboSource = null; playStartedAt = 0; stopTalking(); }
+      };
+      // 起播前后各记一次：src.start() 只是调度，不是实际出声。
+      const startPageT = Date.now() / 1000;
+      const startCtx = ctx.currentTime;
+      const baseLatency = Number(ctx.baseLatency || 0);
+      const outputLatency = Number(ctx.outputLatency || 0);
+      src.start();
+      playStartedAt = Date.now();
+      mark('audio', c, {
+        ctx: startCtx,
+        base: baseLatency,
+        out: outputLatency,
+        dur: buf.duration,
+        start_t: startPageT,
+      });
+      return { ok: true, durMs: buf.duration * 1000 };
+    } catch (e) {
+      return { ok: false, durMs: 0 };
+    }
+  }
+
+  let uiRev = null;   // 服务端 index.html 的版本号：换了前端就自己刷新，不用手动重开 OBS 源
+
+  function applyState(d) {
+    if (!d) return;
+    if (d.status) statusEl.innerHTML = fmtStatus(d.status);
+    // 前端改过（ui_rev 变了）→ 空闲时自己 reload。OBS/直播姬的 browser source
+    // 会缓存旧 JS，不自动刷新的话改了页面等于没改。
+    if (d.ui_rev) {
+      if (uiRev === null) uiRev = d.ui_rev;
+      else if (d.ui_rev !== uiRev && !saying && !sayQueue.length) {
+        try { location.reload(); } catch (e) {}
+        return;
+      }
+    }
+    // 服务端重启过（seq 回退）：把自己的游标也归零，否则后面所有台词都被当成旧的，彻底不响
+    if (typeof d.seq === 'number' && d.seq < lastId) lastId = 0;
+    const list = d.comments || [];
+    if (!list.length) return;
+    const fresh = list.filter((c) => typeof c.id !== 'number' || c.id > lastId);
+    if (!fresh.length) { hydrated = true; return; }
+    // 首包（SSE init 或第一次轮询）只补字幕，避免刷新页面时把上一句重放一遍；
+    // 之后来的每一条都要出声。不能用 lastId===0 判断：服务端刚重启、首包为空时，
+    // 第一条真正的新台词会被误当成「历史记录」，只挂字幕不出声。
+    const silent = !hydrated || !!d.init || d.audio === false;
+    hydrated = true;
+    lastId = Math.max(lastId, ...fresh.map((c) => c.id));
+    if (silent) {
+      mark('silent', fresh[fresh.length - 1]);
+      showComment(fresh[fresh.length - 1], true);
+      return;
+    }
+    // 一次来多条（历史补发/一条命令塞多句）：只留最新一条去播——旧解说讲的
+    // 已经是上一步动作了（最新优先，见 enqueueSay 的注释）。
+    for (const c of fresh) showComment(c, false);
+  }
+
+  // 主通道：SSE 推送。台词一产生就到，不用等下一次轮询
+  // （轮询最慢会晚 1 秒，字幕就落到出牌之后，观众看到的是「牌打完了才开口」）。
+  try {
+    const es = new EventSource('/events?role=' + encodeURIComponent(ROLE));
+    es.onmessage = (ev) => {
+      try { applyState(JSON.parse(ev.data)); } catch (e) {}
+    };
+    es.onerror = () => { /* EventSource 自己会重连 */ };
+  } catch (e) {}
+
+  // 兜底：SSE 没连上时，还有慢速轮询补状态
+  setInterval(async () => {
+    try {
+      const r = await fetch('/state?after=' + lastId, { cache: 'no-store' });
+      applyState(await r.json());
+    } catch (e) {
+      // keep the last frame; don't blank the overlay
+    }
+  }, 2000);
+</script>
+
+<script>
+(function () {
+  const panel = document.getElementById('routePanel');
+  const head = document.getElementById('routeHead');
+  const note = document.getElementById('routeNote');
+  const cv = document.getElementById('routeCanvas');
+  const ctx = cv.getContext('2d');
+  const COLOR = { M:'#9aa3b2', E:'#e05a4f', R:'#4fae6a', '$':'#d8a84a', T:'#9b6bd6', '?':'#4fb6c9', B:'#e0507a' };
+  const SYM = { Monster:'M', Elite:'E', RestSite:'R', Shop:'$', Treasure:'T', Unknown:'?', Boss:'B', Ancient:'B' };
+  function draw(data) {
+    const plan = data && data.plan;
+    if (!plan || !plan.seq || !data.floor) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    const planned = plan.seq.trim().split(/\s+/);
+    const actual = (plan.actual || []).slice();
+    const steps = actual.map(a => SYM[a.type] || '?');
+    const curIdx = steps.length - 1;
+    const rest = planned.slice(steps.length);
+    const all = steps.concat(rest);
+    const deviated = steps.length > 0 && planned[curIdx] && planned[curIdx] !== steps[curIdx];
+    head.textContent = 'ROUTE  F' + data.floor + (deviated ? '  ⚠偏离' : '');
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    const step = Math.min(28, (H - 24) / Math.max(all.length - 1, 1));
+    const x = W / 2, y0 = 14;
+    ctx.strokeStyle = 'rgba(216,168,74,.45)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + step * (all.length - 1)); ctx.stroke();
+    all.forEach((ch, i) => {
+      const y = y0 + step * i;
+      const isActual = i <= curIdx;
+      const col = COLOR[ch] || '#9aa3b2';
+      const isCur = i === curIdx;
+      ctx.beginPath(); ctx.arc(x, y, isCur ? 8.5 : 6.5, 0, Math.PI * 2);
+      ctx.fillStyle = isCur ? col : (isActual ? 'rgba(40,44,56,.95)' : 'rgba(18,20,28,.85)');
+      ctx.fill();
+      ctx.lineWidth = isCur ? 2.5 : 1.6;
+      ctx.strokeStyle = isActual ? col : 'rgba(140,140,150,.45)';
+      ctx.stroke();
+      ctx.fillStyle = isCur ? '#11131b' : (isActual ? col : 'rgba(150,150,160,.75)');
+      ctx.font = 'bold 10px Consolas, monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(ch, x, y + 0.5);
+    });
+    note.textContent = (plan.note || '') + (deviated ? ' · 已偏离计划，重新 route --commit' : '');
+  }
+  async function tick() {
+    try { const r = await fetch('/route', {cache: 'no-store'}); draw(await r.json()); }
+    catch (e) { panel.classList.add('hidden'); }
+  }
+  tick();
+  setInterval(tick, 1500);
+})();
+</script>
+</body>
+</html>

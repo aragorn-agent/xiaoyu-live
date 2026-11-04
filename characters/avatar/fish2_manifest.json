@@ -1,0 +1,32 @@
+{
+ "idle": {
+  "rgb": "/avatar/fish2_idle_rgb.mp4",
+  "alpha": "/avatar/fish2_idle_a.mp4",
+  "storage": "premultiplied",
+  "bg": [
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ "talk": {
+  "rgb": "/avatar/fish2_talk_rgb.mp4",
+  "alpha": "/avatar/fish2_talk_a.mp4",
+  "storage": "premultiplied",
+  "bg": [
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ "laugh": {
+  "rgb": "/avatar/fish2_laugh_rgb.mp4",
+  "alpha": "/avatar/fish2_laugh_a.mp4",
+  "storage": "premultiplied",
+  "bg": [
+   0.0,
+   0.0,
+   0.0
+  ]
+ }
+}
