@@ -103,6 +103,7 @@ class MusicService:
     def _play_bgm(self) -> dict | None:
         """BGM 续播：随机挑一首非当前曲（点歌队列永远优先）。"""
         import random
+        self.scan()
         if not self.lib:
             return None
         pool = [s for s in self.lib if s["id"] != (self.current or {}).get("id")] or self.lib

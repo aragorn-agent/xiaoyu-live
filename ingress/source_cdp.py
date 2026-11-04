@@ -237,7 +237,7 @@ class CdpWssSource:
                     return
                 self._udir = tempfile.mkdtemp(prefix="xiaoyu_cdp_")
                 port = _free_port()
-                args = [browser, "--disable-gpu", "--mute-audio",
+                args = [browser, "--disable-gpu", "--mute-audio", "--window-position=-32000,-32000", "--window-size=1024,768",
                         "--disable-blink-features=AutomationControlled",
                         f"--user-agent={_UA}", f"--remote-debugging-port={port}",
                         f"--user-data-dir={self._udir}",

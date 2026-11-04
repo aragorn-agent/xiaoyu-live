@@ -40,16 +40,16 @@
   body.layout-landscape #stage { height:100vh; aspect-ratio:auto; left:0; transform:none; width:100vw; }
 
   .card { position:relative; background:linear-gradient(180deg,var(--glass-hi),var(--glass));
-    border:1px solid rgba(255,255,255,.5); border-radius:calc(var(--u)*1.5);
-    box-shadow:0 calc(var(--u)*.5) calc(var(--u)*2) rgba(90,40,70,.10), inset 0 1px 0 rgba(255,255,255,.55);
-    backdrop-filter:blur(24px) saturate(1.5); -webkit-backdrop-filter:blur(24px) saturate(1.5);
-    padding:calc(var(--u)*.95) calc(var(--u)*1.15);
+    border:1px solid rgba(255,255,255,.5); border-radius:calc(var(--u)*1.1);
+    box-shadow:0 calc(var(--u)*.4) calc(var(--u)*1.5) rgba(90,40,70,.10), inset 0 1px 0 rgba(255,255,255,.55);
+    backdrop-filter:blur(18px) saturate(1.5); -webkit-backdrop-filter:blur(18px) saturate(1.5);
+    padding:calc(var(--u)*.55) calc(var(--u)*.8);
   }
   .card h3 { display:flex; align-items:center; gap:calc(var(--u)*.5);
-    font-size:calc(var(--u)*1.04); font-weight:750; letter-spacing:.05em; color:var(--ink2);
-    margin-bottom:calc(var(--u)*.45); }
+    font-size:calc(var(--u)*.9); font-weight:750; letter-spacing:.04em; color:var(--ink2);
+    margin-bottom:calc(var(--u)*.26); }
   .rowline { display:flex; align-items:center; justify-content:space-between; gap:calc(var(--u)*.55);
-    font-size:calc(var(--u)*.92); padding:calc(var(--u)*.28) 0; color:var(--ink); min-width:0; }
+    font-size:calc(var(--u)*.8); padding:calc(var(--u)*.14) 0; color:var(--ink); min-width:0; }
   .rowline + .rowline { border-top:1px solid var(--hairline); }
   .rowline > span, .rowline > b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .rowline .sub { color:var(--ink3); font-size:calc(var(--u)*.88); font-weight:400; flex:none; }
@@ -66,7 +66,7 @@
   .col.left { left:8%; } .col.right { right:8%; }
 
   /* ── 顶部徽章排 ── */
-  #badges { position:absolute; left:50%; transform:translateX(-50%); top:2.6%; z-index:30;
+  #badges { position:absolute; left:50%; transform:translateX(-50%); top:10.4%; z-index:30;
     display:flex; gap:calc(var(--u)*.6); align-items:center;
     background:linear-gradient(180deg,var(--glass-hi),var(--glass)); border:1px solid rgba(255,255,255,.55);
     border-radius:999px; padding:calc(var(--u)*.5) calc(var(--u)*1.2);
@@ -76,12 +76,12 @@
   .badge2.blue { background:#e8f2ff; color:#0a63c9; }
   .badge2.pink { background:#ffe3ec; color:#d6336c; }
   .badge2.warm { background:#fff3d6; color:#b07000; }
-  #clockline { position:absolute; right:5.5%; top:4.6%; z-index:25; font-size:calc(var(--u)*.95);
+  #clockline { position:absolute; right:5.5%; top:11.2%; z-index:25; font-size:calc(var(--u)*.95);
     color:var(--ink3); font-variant-numeric:tabular-nums; }
   #clockline b { color:var(--rose); }
 
   /* ── 顶部左右横幅 ── */
-  .topbanner { position:absolute; top:6.4%; z-index:25; display:flex; align-items:center; gap:calc(var(--u)*.5);
+  .topbanner { position:absolute; top:15.4%; z-index:25; display:flex; align-items:center; gap:calc(var(--u)*.5);
     border-radius:999px; padding:calc(var(--u)*.45) calc(var(--u)*1); font-size:calc(var(--u)*1.02);
     background:linear-gradient(180deg,var(--glass-hi),var(--glass)); border:1px solid rgba(255,255,255,.55);
     box-shadow:0 calc(var(--u)*.3) calc(var(--u)*1.4) rgba(90,40,70,.10); white-space:nowrap; }
@@ -207,8 +207,7 @@
              radial-gradient(45% 100% at 88% 100%, rgba(60,180,255,.12), transparent 60%); }
 #cinemaBottom { position:absolute; left:0; right:0; bottom:0; height:9.2%; z-index:12; pointer-events:none;
   background:linear-gradient(0deg,#0e0906 0%,#201711 72%,rgba(32,23,17,.8) 90%,rgba(32,23,17,0) 100%); }
-#topBadges { position:absolute; left:50%; transform:translateX(-50%); top:2.2%; z-index:26; max-width:96%;
-  display:flex; gap:calc(var(--u)*.8); align-items:center; white-space:nowrap; }
+
 #topBadges .bdg { border-radius:999px; padding:calc(var(--u)*.34) calc(var(--u)*1.1);
   font-size:calc(var(--u)*1.02); font-weight:750; border:1px solid rgba(255,255,255,.35);
   box-shadow:0 calc(var(--u)*.3) calc(var(--u)*1.2) rgba(20,10,40,.35); }
@@ -272,7 +271,7 @@
   <div id="likePop"></div>
   <div id="cinemaTop"><div class="deco"></div></div>
   <div id="cinemaBottom"></div>
-  <div id="topBadges"><span class="bdg ai">AI 虚拟主播 · 非真人</span><span class="bdg new">新人主播</span><span class="bdg ask">求关注 求点赞 ❤</span></div>
+  
   <div id="floorShadow"></div>
   <canvas id="bowlCanvas" width="520" height="760"></canvas>
   
@@ -307,7 +306,7 @@
       <div class="rowline"><span>消耗速率</span><span class="sub" id="edBurn">--</span></div>
       <div class="rowline"><span>tokens</span><b id="edTok">--</b></div>
     </div>
-    <div id="playMenu" class="card" style="flex:1 1 auto; min-height:0; overflow:hidden;">
+    <div id="playMenu" class="card">
       <h3>所有玩法</h3>
       <div id="playMenuItems"></div>
     </div>
@@ -340,7 +339,7 @@
       <div class="t1" id="geTitle"></div>
       <div class="t2" id="geText"></div>
     </div>
-    <div id="masters" class="card grow-card" style="flex:1 1 auto; min-height:0; overflow:hidden;">
+    <div id="masters" class="card grow-card">
       <h3>大肥鱼的主人们 <span style="margin-left:auto" class="num" id="msCount">0/3</span></h3>
       <div id="msRows"></div>
     </div>
@@ -366,9 +365,9 @@ const esc = s => String(s).replace(/[<>&]/g, c => ({"<":"&lt;","&gt":"&gt;","&":
 const GALLERY = new URLSearchParams(location.search).get("gallery") === "1";
 if (GALLERY) document.body.classList.add("gallery");
 $("#playMenuItems").innerHTML = [
-  ["⚔", "开Boss", "全服讨伐"], ["🎵", "猜歌", "盲盒抢答"], ["🎶", "点歌 歌名", "点歌台"],
-  ["🎮", "接龙", "成语接龙"], ["🎲", "猜数字", "互动"], ["💃", "跳舞", "现场跳舞"],
-  ["🐟", "投喂", "养成进化"], ["🖐", "摸摸鱼头", "彩蛋"], ["🎭", "人设傲娇", "换性格"],
+  ["🎶", "点歌 歌名", "点歌台"], ["💃", "跳舞", "现场跳舞"],
+  ["🐟", "投喂", "养成进化"], ["🎲", "猜数字", "互动"],
+  ["🎭", "人设傲娇", "换性格"],
 ].map(x => `<div class="rowline"><span style="display:flex;align-items:center;min-width:0"><span class="icochip">${x[0]}</span><span>${x[1]}</span></span><span class="sub">${x[2]}</span></div>`).join("");
 
 // ── 尺寸系统 ──

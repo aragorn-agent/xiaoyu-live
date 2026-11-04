@@ -1,4 +1,6 @@
 # 运行时数据与密钥
+characters/live2d/
+characters/live2d$m/
 .venv/
 data/
 logs/
@@ -12,8 +14,4 @@ __pycache__/
 _upstream/
 
 # Live2D 模型受《免费素材许可协议》约束：禁止再分发，不入库
-characters/live2d/
-characters/live2d$m/
-characters/live2d/
-characters/live2d$m/
 web/static/previews/
